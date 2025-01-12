@@ -10,6 +10,7 @@ fn main() {
         .extract()
         .unwrap()
         .write(PathBuf::new().join(out_dir).join("spire.rs"))
+        // .write(PathBuf::new().join("test.rs"))
         .unwrap()
         .world();
     world.save("assets/ldtk/spire.ron").unwrap();

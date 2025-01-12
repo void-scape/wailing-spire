@@ -3,7 +3,9 @@
         scene_tiles: {
             (0): "ldtk/0.tiles.ron",
         },
-        scene_entities: {},
+        scene_entities: {
+            (0): "ldtk/0.entities.ron",
+        },
         composites: {
             ((0), (37)): "ldtk/LevelOne_BackgroundComposite_composite.png",
             ((0), (2)): "ldtk/LevelOne_WallsComposite_composite.png",
