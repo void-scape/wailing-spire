@@ -1,7 +1,7 @@
 use super::{gravity::Grounded, prelude::Velocity, spatial};
 use crate::spire::TileSolid;
 use crate::TILE_SIZE;
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
 use std::cmp::Ordering;
 
@@ -530,7 +530,8 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
 
     #[derive(Debug, Clone, Copy)]
     struct Plate {
-        y: f32,
+        y_start: f32,
+        y_end: f32,
         x_start: f32,
         x_end: f32,
     }
@@ -552,7 +553,8 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
                         plates.push(Plate {
                             x_end: cx + tile_size,
                             x_start: xs,
-                            y,
+                            y_start: y - tile_size,
+                            y_end: y,
                         });
                         x_start = Some(*x);
                     }
@@ -568,7 +570,8 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
                 plates.push(Plate {
                     x_end: cx + tile_size,
                     x_start: xs,
-                    y,
+                    y_start: y - tile_size,
+                    y_end: y,
                 });
             }
             _ => unreachable!(),
@@ -577,18 +580,49 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
         row_plates.push(plates);
     }
 
-    let mut output = Vec::new();
-    for plates in row_plates.into_iter() {
-        for plate in plates.into_iter() {
-            output.push((
-                Vec2::new(plate.x_start, plate.y - tile_size),
-                Collider::from_rect(
-                    Vec2::ZERO,
-                    Vec2::new(plate.x_end - plate.x_start, tile_size),
-                ),
-            ));
+    let mut output = HashMap::<(i32, i32), Vec<Plate>>::default();
+    for plates in row_plates.iter() {
+        for plate in plates.iter() {
+            let entry = output
+                .entry((plate.x_start as i32, plate.x_end as i32))
+                .or_default();
+            entry.push(*plate);
         }
     }
 
-    output
+    for (_, plates) in output.iter_mut() {
+        let mut new_plates = Vec::with_capacity(plates.len());
+
+        while let Some(mut plate) = plates.pop() {
+            while let Some(next_plate) = plates.pop() {
+                if next_plate.y_end == plate.y_start {
+                    let end = plate.y_end;
+                    plate = next_plate;
+                    plate.y_end = end;
+                } else {
+                    new_plates.push(next_plate);
+                    break;
+                }
+            }
+
+            new_plates.push(plate);
+        }
+
+        *plates = new_plates;
+    }
+
+    println!("{:#?}", output);
+
+    let mut colliders = Vec::new();
+    for plate in output.into_values().flatten() {
+        colliders.push((
+            Vec2::new(plate.x_start, plate.y_start),
+            Collider::from_rect(
+                Vec2::ZERO,
+                Vec2::new(plate.x_end - plate.x_start, plate.y_end - plate.y_start),
+            ),
+        ));
+    }
+
+    colliders
 }

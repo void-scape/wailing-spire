@@ -4647,6 +4647,7 @@ dependencies = [
  "bevy_ldtk_scene",
  "bevy_pixel_gfx",
  "leafwing-input-manager",
+ "rand",
  "serde",
 ]
 

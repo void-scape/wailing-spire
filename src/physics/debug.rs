@@ -5,6 +5,7 @@ use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::sprite::{Wireframe2d, Wireframe2dColor};
 use bevy_pixel_gfx::pixel_perfect::HIGH_RES_LAYER;
+use rand::Rng;
 
 #[derive(Resource)]
 pub struct ShowCollision(pub bool);
@@ -26,7 +27,7 @@ impl Collider {
                         rect.tl.y + rect.size.y / 2.,
                         // rect.tl.x,
                         // rect.tl.y,
-                        999.,
+                        rand::thread_rng().gen_range(500.0..999.0),
                     ),
                 ),
                 Self::Circle(circle) => (
