@@ -1,10 +1,16 @@
+use crate::TILE_SIZE;
 use crate::{
     animation::{AnimationController, AnimationPlugin},
     physics::prelude::*,
 };
-use crate::{spire, TILE_SIZE};
+use bevy::ecs::component::ComponentId;
+use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
+use bevy_pixel_gfx::camera::bind_camera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, zorder::YOrigin};
+use leafwing_input_manager::prelude::{
+    GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
+};
 use leafwing_input_manager::{
     plugin::InputManagerPlugin,
     prelude::{ActionState, InputMap},
@@ -16,19 +22,20 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.register_required_components::<spire::Knight, Player>()
+        app.register_required_components::<crate::spire::Knight, Player>()
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
             ))
-            .add_systems(Update, (update, smooth_camera_offset).chain());
+            .add_systems(Update, (update, jump, smooth_camera_offset).chain());
     }
 }
 
-pub const MAX_X_VEL: f32 = 100.;
-pub const MAX_Y_VEL: f32 = 250.;
-pub const RUN_FORCE: f32 = 40.;
-pub const JUMP_FORCE: f32 = 800.;
+const MAX_X_VEL: f32 = 100.;
+const MAX_Y_VEL: f32 = 250.;
+const RUN_FORCE: f32 = 40.;
+const JUMP_SPEED: f32 = 200.;
+const JUMP_MAX_DURATION: f32 = 0.2;
 
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
@@ -38,7 +45,12 @@ pub const JUMP_FORCE: f32 = 800.;
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE, -TILE_SIZE))))]
 #[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 #[require(AnchorTarget)]
+#[component(on_insert = on_insert_player)]
 pub struct Player;
+
+fn on_insert_player(mut world: DeferredWorld, _: Entity, _: ComponentId) {
+    // world.commands().run_system_cached(bind_camera::<Player>);
+}
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(
@@ -52,11 +64,13 @@ fn animation_controller() -> AnimationController<PlayerAnimation> {
 
 fn input_map() -> InputMap<Action> {
     InputMap::new([
-        (Action::Run(Direction::Left), KeyCode::KeyA),
-        (Action::Run(Direction::Right), KeyCode::KeyD),
         (Action::Jump, KeyCode::Space),
         (Action::Interact, KeyCode::KeyE),
     ])
+    .with(Action::Jump, GamepadButton::South)
+    .with(Action::Interact, GamepadButton::North)
+    .with_dual_axis(Action::Run, GamepadStick::LEFT.with_deadzone_symmetric(0.3))
+    .with_dual_axis(Action::Run, VirtualDPad::wasd())
 }
 
 fn collider() -> Collider {
@@ -74,7 +88,8 @@ enum PlayerAnimation {
 
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
 pub enum Action {
-    Run(Direction),
+    #[actionlike(DualAxis)]
+    Run,
     Jump,
     Interact,
 }
@@ -94,22 +109,13 @@ impl Direction {
         }
     }
 
-    // pub fn from_velocity(velocity: Vec2) -> Self {
-    //     #[allow(clippy::collapsible_else_if)]
-    //     if velocity.x.abs() > velocity.y.abs() {
-    //         if velocity.x > 0.0 {
-    //             Direction::Right
-    //         } else {
-    //             Direction::Left
-    //         }
-    //     } else {
-    //         if velocity.y > 0.0 {
-    //             Direction::Up
-    //         } else {
-    //             Direction::Down
-    //         }
-    //     }
-    // }
+    pub fn from_vec(vec: Vec2) -> Self {
+        if vec.x > 0.0 {
+            Direction::Right
+        } else {
+            Direction::Left
+        }
+    }
 }
 
 fn smooth_camera_offset(player: Option<Single<(&Direction, &mut CameraOffset)>>) {
@@ -122,10 +128,15 @@ fn smooth_camera_offset(player: Option<Single<(&Direction, &mut CameraOffset)>>)
     }
 }
 
+#[derive(Component)]
+struct Jumping;
+
 fn update(
+    mut commands: Commands,
     player: Option<
         Single<
             (
+                Entity,
                 &ActionState<Action>,
                 &mut Acceleration,
                 &mut AnimationController<PlayerAnimation>,
@@ -140,6 +151,7 @@ fn update(
     mut set_idle: Local<bool>,
 ) {
     if let Some((
+        entity,
         action_state,
         mut acceleration,
         mut animations,
@@ -149,23 +161,16 @@ fn update(
         grounded,
     )) = player.map(|p| p.into_inner())
     {
-        for action in action_state.get_pressed() {
-            if let Action::Run(dir) = action {
-                if *set_idle {
-                    animations.set_animation(PlayerAnimation::Run);
-                }
-                acceleration.apply_force(dir.into_unit_vec2() * RUN_FORCE);
-                *direction = dir;
-                *set_idle = false;
+        let axis_pair = action_state.clamped_axis_pair(&Action::Run);
+        if axis_pair.x != 0. {
+            if *set_idle {
+                animations.set_animation(PlayerAnimation::Run);
             }
-        }
-
-        if !*set_idle
-            && !action_state.get_pressed().iter().any(|a| {
-                std::mem::discriminant(a)
-                    == std::mem::discriminant(&Action::Run(Direction::default()))
-            })
-        {
+            let dir = Direction::from_vec(axis_pair);
+            acceleration.apply_force(dir.into_unit_vec2() * RUN_FORCE);
+            *direction = dir;
+            *set_idle = false;
+        } else {
             *set_idle = true;
             velocity.0.x = 0.;
             animations.set_animation(PlayerAnimation::Idle)
@@ -177,7 +182,7 @@ fn update(
             match action {
                 Action::Jump => {
                     if grounded.is_some() {
-                        acceleration.apply_force(Vec2::Y * JUMP_FORCE);
+                        commands.entity(entity).insert(Jumping);
                     }
                 }
                 Action::Interact => {
@@ -186,6 +191,36 @@ fn update(
                 _ => {}
             }
         }
+    }
+}
+
+fn jump(
+    mut commands: Commands,
+    player: Option<
+        Single<(Entity, &ActionState<Action>, &mut Velocity), (With<Player>, With<Jumping>)>,
+    >,
+    time: Res<Time>,
+    mut timer: Local<Option<Timer>>,
+) {
+    if let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) {
+        let timer =
+            timer.get_or_insert_with(|| Timer::from_seconds(JUMP_MAX_DURATION, TimerMode::Once));
+
+        timer.tick(time.delta());
+        if timer.finished()
+            || action_state
+                .get_pressed()
+                .iter()
+                .all(|a| *a != Action::Jump)
+        {
+            commands.entity(entity).remove::<Jumping>();
+            timer.reset();
+            velocity.0.y /= 2.;
+            return;
+        }
+
+        // acceleration.apply_force(Vec2::Y * JUMP_FORCE);
+        velocity.0.y = JUMP_SPEED;
     }
 }
 

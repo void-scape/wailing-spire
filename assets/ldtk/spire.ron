@@ -1,0 +1,12 @@
+(
+    io: (
+        scene_tiles: {
+            (0): "ldtk/0.tiles.ron",
+        },
+        scene_entities: {},
+        composites: {
+            ((0), (37)): "ldtk/LevelOne_BackgroundComposite_composite.png",
+            ((0), (2)): "ldtk/LevelOne_WallsComposite_composite.png",
+        },
+    ),
+)

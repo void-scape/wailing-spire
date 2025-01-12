@@ -4,7 +4,8 @@ use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
-use bevy_pixel_gfx::{camera::bind_camera, pixel_perfect::CanvasDimensions};
+use bevy_ldtk_scene::{HotWorld, World};
+use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use physics::gravity::Gravity;
 
 mod animation;
@@ -12,6 +13,7 @@ mod entity_registry;
 mod physics;
 mod player;
 mod spire;
+mod test;
 
 const WIDTH: f32 = 320.;
 const HEIGHT: f32 = 180.;
@@ -26,11 +28,13 @@ fn main() {
             player::PlayerPlugin,
             entity_registry::EntityRegistryPlugin,
             physics::PhysicsPlugin,
+            spire::SpirePlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
-        .insert_resource(Gravity(Vec2::NEG_Y * 10.))
+        .insert_resource(Gravity(Vec2::NEG_Y * 15.))
         .add_systems(Update, close_on_escape)
-        .add_systems(Update, level_one)
+        .add_systems(Startup, startup)
+        // .add_systems(Update, restart)
         .run();
 }
 
@@ -42,23 +46,31 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
     }
 }
 
-fn level_one(
-    mut commands: Commands,
-    mut reader: EventReader<KeyboardInput>,
-    mut level_entity: Local<Option<Entity>>,
-) {
-    if level_entity.is_none()
-        || reader
-            .read()
-            .any(|i| !i.repeat && i.key_code == KeyCode::KeyR && i.state == ButtonState::Pressed)
-    {
-        let entity = commands.spawn_empty().id();
-        commands.run_system_cached_with(spire::level_one::spawn, entity);
-        if level_entity.is_none() {
-            commands.run_system_cached(bind_camera::<player::Player>);
-        }
-
-        level_entity.map(|e| commands.entity(e).despawn_recursive());
-        *level_entity = Some(entity);
-    }
+fn startup(mut commands: Commands, server: Res<AssetServer>) {
+    commands.spawn((
+        HotWorld(server.load("ldtk/spire.ldtk")),
+        World(server.load("ldtk/spire.ron")),
+        // LevelSelect::new(spire::level_one::LevelOne),
+    ));
 }
+
+// fn restart(
+//     mut commands: Commands,
+//     mut reader: EventReader<KeyboardInput>,
+//     server: Res<AssetServer>,
+//     world_query: Query<Entity, With<World>>,
+// ) {
+//     if reader
+//         .read()
+//         .any(|i| !i.repeat && i.key_code == KeyCode::KeyR && i.state == ButtonState::Pressed)
+//     {
+//         for entity in world_query.iter() {
+//             commands.entity(entity).despawn_recursive();
+//         }
+//
+//         commands.spawn((
+//             World(server.load("ldtk/spire.ldtk")),
+//             LevelSelect::new(spire::level_one::LevelOne),
+//         ));
+//     }
+// }

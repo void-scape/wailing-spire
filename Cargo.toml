@@ -5,17 +5,13 @@ edition = "2021"
 
 [dependencies]
 leafwing-input-manager = "0.16.0"
+bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
+bevy_pixel_gfx = { path = "bevy_pixel_gfx" }
+serde = "1.0.217"
 
 [dependencies.bevy]
 version = "0.15"
 features = ["dynamic_linking", "file_watcher"]
-
-[dependencies.bevy_pixel_gfx]
-path = "bevy_pixel_gfx"
-# features = ["sequence"]
-
-[dependencies.bevy_ldtk_scene]
-path = "bevy_ldtk_scene"
 
 [build-dependencies]
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }

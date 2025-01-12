@@ -18,9 +18,8 @@ fn dyn_camera_anchor(
     ldtk: Query<(Entity, &spire::DynamicCameraAnchor), Added<spire::DynamicCameraAnchor>>,
 ) {
     for (entity, anchor) in ldtk.iter() {
-        commands.entity(entity).with_child((
-            Transform::default(),
-            DynamicCameraAnchor::new(anchor.radius, anchor.speed),
-        ));
+        commands
+            .entity(entity)
+            .insert(DynamicCameraAnchor::new(anchor.radius, anchor.speed));
     }
 }

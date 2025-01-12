@@ -1,6 +1,6 @@
-use crate::{spire::TileSolid, TILE_SIZE};
-
 use super::{gravity::Grounded, prelude::Velocity, spatial};
+use crate::spire::TileSolid;
+use crate::TILE_SIZE;
 use bevy::prelude::*;
 use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
 use std::cmp::Ordering;
@@ -167,8 +167,10 @@ impl CollidesWith<Self> for RectCollider {
             return Vec2::ZERO;
         }
 
-        let ratio = x_overlap / y_overlap;
-        if x_overlap < y_overlap || (0.75 < ratio && ratio < 1.25) {
+        // let ratio = x_overlap / y_overlap;
+        if x_overlap < y_overlap
+        // || (0.75 < ratio && ratio < 1.25)
+        {
             // Resolve horizontally
             let dir = (self_center.x - other_center.x).signum();
             Vec2::new(x_overlap * dir, 0.)
