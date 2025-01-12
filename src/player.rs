@@ -6,7 +6,8 @@ use crate::{
 use bevy::ecs::component::ComponentId;
 use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
-use bevy_pixel_gfx::camera::bind_camera;
+use bevy::time::Stopwatch;
+use bevy_pixel_gfx::camera::{bind_camera, MainCamera};
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, zorder::YOrigin};
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
@@ -27,12 +28,22 @@ impl Plugin for PlayerPlugin {
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
             ))
-            .add_systems(Update, (update, jump, smooth_camera_offset).chain());
+            .add_systems(Update, (manage_brushing_move, update, jump).chain())
+            .add_systems(
+                PostUpdate,
+                move_camera.before(TransformSystem::TransformPropagate),
+            );
     }
 }
 
 const MAX_X_VEL: f32 = 100.;
 const MAX_Y_VEL: f32 = 250.;
+const WALL_IMPULSE: f32 = 400.;
+const AIR_ACCEL: f32 = 0.08;
+const AIR_DAMPING: f32 = 0.08;
+const SLIDE_SPEED: f32 = 20.;
+const WALL_STICK_TIME: f32 = 0.20;
+
 const RUN_FORCE: f32 = 40.;
 const JUMP_SPEED: f32 = 200.;
 const JUMP_MAX_DURATION: f32 = 0.2;
@@ -41,10 +52,11 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(Velocity, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
-#[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::new(MAX_X_VEL, MAX_Y_VEL))))]
-#[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE, -TILE_SIZE))))]
+#[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::new(WALL_IMPULSE, MAX_Y_VEL))))]
+#[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 #[require(AnchorTarget)]
+#[require(BrushingMove)]
 #[component(on_insert = on_insert_player)]
 pub struct Player;
 
@@ -118,18 +130,72 @@ impl Direction {
     }
 }
 
-fn smooth_camera_offset(player: Option<Single<(&Direction, &mut CameraOffset)>>) {
-    if let Some((direction, mut cam_offset)) = player.map(|i| i.into_inner()) {
-        let target = direction.into_unit_vec2() * TILE_SIZE;
+// fn smooth_camera_offset(player: Option<Single<(&Direction, &mut CameraOffset)>>) {
+//     if let Some((direction, mut cam_offset)) = player.map(|i| i.into_inner()) {
+//         let target = direction.into_unit_vec2() * TILE_SIZE;
+//
+//         // gradually approach the target offset
+//         let delta = (target - cam_offset.0) * 0.05;
+//         cam_offset.0 += delta;
+//     }
+// }
 
-        // gradually approach the target offset
-        let delta = (target - cam_offset.0) * 0.05;
-        cam_offset.0 += delta;
-    }
+fn move_camera(
+    mut cam: Query<&mut Transform, With<MainCamera>>,
+    player: Query<&Transform, (With<Player>, Without<MainCamera>)>,
+) {
+    let Ok(mut cam) = cam.get_single_mut() else {
+        return;
+    };
+
+    let Ok(player) = player.get_single() else {
+        return;
+    };
+
+    let target_position = Vec3::new(184., player.translation.y + TILE_SIZE * 1.5, 0.);
+    let delta = target_position - cam.translation;
+
+    cam.translation += delta * 0.05;
 }
 
 #[derive(Component)]
 struct Jumping;
+
+#[derive(Component, Default, Debug)]
+struct BrushingMove(Stopwatch);
+
+fn manage_brushing_move(
+    player: Option<
+        Single<
+            (
+                &ActionState<Action>,
+                &mut BrushingMove,
+                Option<&Grounded>,
+                Option<&BrushingLeft>,
+                Option<&BrushingRight>,
+            ),
+            With<Player>,
+        >,
+    >,
+    time: Res<Time>,
+) {
+    let Some((action, mut brushing_move, grounded, brushing_left, brushing_right)) =
+        player.map(|p| p.into_inner())
+    else {
+        return;
+    };
+
+    let axis_pair = action.clamped_axis_pair(&Action::Run);
+    let direction = Direction::from_vec(axis_pair);
+
+    if grounded.is_none() && brushing_left.is_some() && direction == Direction::Right
+        || brushing_right.is_some() && direction == Direction::Left
+    {
+        brushing_move.0.tick(time.delta());
+    } else {
+        brushing_move.0.reset();
+    }
+}
 
 fn update(
     mut commands: Commands,
@@ -142,7 +208,10 @@ fn update(
                 &mut Sprite,
                 &mut Direction,
                 &mut Velocity,
+                &BrushingMove,
                 Option<&Grounded>,
+                Option<&BrushingLeft>,
+                Option<&BrushingRight>,
             ),
             With<Player>,
         >,
@@ -156,7 +225,10 @@ fn update(
         mut sprite,
         mut direction,
         mut velocity,
+        brushing_move,
         grounded,
+        brushing_left,
+        brushing_right,
     )) = player.map(|p| p.into_inner())
     {
         let axis_pair = action_state.clamped_axis_pair(&Action::Run);
@@ -166,14 +238,48 @@ fn update(
             }
             let dir = Direction::from_vec(axis_pair);
 
-            velocity.0.x = dir.into_unit_vec2().x * 100.;
+            if grounded.is_some() {
+                velocity.0.x = dir.into_unit_vec2().x * 100.;
+            } else {
+                if !((brushing_left.is_some() || brushing_right.is_some())
+                    && brushing_move.0.elapsed_secs() <= WALL_STICK_TIME)
+                {
+                    match dir {
+                        Direction::Right => {
+                            if velocity.0.x < MAX_X_VEL {
+                                velocity.0.x =
+                                    (velocity.0.x + AIR_ACCEL * MAX_X_VEL).min(MAX_X_VEL);
+                            }
+                        }
+                        Direction::Left => {
+                            if velocity.0.x > -MAX_X_VEL {
+                                velocity.0.x =
+                                    (velocity.0.x - AIR_ACCEL * MAX_X_VEL).max(-MAX_X_VEL);
+                            }
+                        }
+                    }
+                }
+            }
 
             *direction = dir;
             *set_idle = false;
         } else {
             *set_idle = true;
-            velocity.0.x = 0.;
+
+            if grounded.is_some() {
+                velocity.0.x = 0.;
+            }
+
             animations.set_animation(PlayerAnimation::Idle)
+        }
+
+        if grounded.is_none() {
+            // air damping
+            velocity.0.x *= 1.0 - AIR_DAMPING;
+        }
+
+        if brushing_left.is_some() || brushing_right.is_some() {
+            velocity.0.y = velocity.0.y.max(-SLIDE_SPEED);
         }
 
         sprite.flip_x = Direction::Left == *direction;
@@ -183,6 +289,12 @@ fn update(
                 Action::Jump => {
                     if grounded.is_some() {
                         commands.entity(entity).insert(Jumping);
+                    } else if brushing_left.is_some() {
+                        commands.entity(entity).insert(Jumping);
+                        velocity.0.x += WALL_IMPULSE;
+                    } else if brushing_right.is_some() {
+                        commands.entity(entity).insert(Jumping);
+                        velocity.0.x -= WALL_IMPULSE;
                     }
                 }
                 Action::Interact => {

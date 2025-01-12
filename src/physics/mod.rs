@@ -56,6 +56,7 @@ impl Plugin for PhysicsPlugin {
                             collision::handle_collisions,
                             collision::handle_dynamic_body_collsions,
                             collision::update_grounded,
+                            collision::update_brushing,
                         )
                             .chain(),
                         debug::debug_display_collider_wireframe,

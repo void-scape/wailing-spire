@@ -9,6 +9,14 @@ pub struct Gravity(pub Vec2);
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct Grounded;
 
+/// An entity that's brushing a left or right wall.
+#[derive(Debug, Default, Clone, Copy, Component)]
+pub struct BrushingLeft;
+
+/// An entity that's brushing a left or right wall.
+#[derive(Debug, Default, Clone, Copy, Component)]
+pub struct BrushingRight;
+
 pub fn apply_gravity(
     gravity: Res<Gravity>,
     mut object_query: Query<&mut Acceleration, Without<Grounded>>,

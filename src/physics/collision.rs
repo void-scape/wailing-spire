@@ -1,4 +1,8 @@
-use super::{gravity::Grounded, prelude::Velocity, spatial};
+use super::{
+    gravity::{BrushingLeft, BrushingRight, Grounded},
+    prelude::Velocity,
+    spatial,
+};
 use crate::spire::TileSolid;
 use crate::TILE_SIZE;
 use bevy::{prelude::*, utils::hashbrown::HashMap};
@@ -339,16 +343,10 @@ pub fn handle_collisions(
                 collider = original_collider.absolute(&transform);
 
                 if res_v.y.abs() > 0. {
-                    // grounded = true;
                     velocity.0.y = 0.;
-                    // commands.entity(entity).insert(Grounded);
                 }
             }
         }
-
-        // if !grounded {
-        //     commands.entity(entity).remove::<Grounded>();
-        // }
     }
 }
 
@@ -393,6 +391,67 @@ pub fn update_grounded(
             commands.entity(entity).insert(Grounded);
         } else {
             commands.entity(entity).remove::<Grounded>();
+        }
+    }
+}
+
+pub fn update_brushing(
+    mut commands: Commands,
+    static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+    mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
+) {
+    let map = static_body_storage.into_inner();
+
+    for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
+        let collider = collider.absolute(transform);
+        let nearby_colliders = map.nearby_objects(&collider.position());
+
+        let mut left = false;
+        let mut right = false;
+
+        for spatial::SpatialData {
+            collider: static_collider,
+            ..
+        } in nearby_colliders
+        {
+            match (collider, static_collider) {
+                (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
+                    let y_range = b.br().y..b.tl.y;
+
+                    let corner_inside = y_range.contains(&a.tl.y) || y_range.contains(&a.br().y);
+
+                    // left
+                    let adjacent = (a.tl.x - b.br().x).abs() < 0.1;
+                    let no_going_right = velocity.0.x <= 0.;
+
+                    if adjacent && corner_inside && no_going_right {
+                        left = true;
+                    }
+
+                    // right
+                    let adjacent = (a.br().x - b.tl.x).abs() < 0.1;
+                    let no_going_left = velocity.0.x >= 0.;
+
+                    if adjacent && corner_inside && no_going_left {
+                        right = true;
+                    }
+                }
+                _ => {
+                    todo!("implement more grounded interactions")
+                }
+            }
+        }
+
+        if left {
+            commands.entity(entity).insert(BrushingLeft);
+        } else {
+            commands.entity(entity).remove::<BrushingLeft>();
+        }
+
+        if right {
+            commands.entity(entity).insert(BrushingRight);
+        } else {
+            commands.entity(entity).remove::<BrushingRight>();
         }
     }
 }
