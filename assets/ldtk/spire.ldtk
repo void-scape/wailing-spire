@@ -37,7 +37,7 @@
 	"backupLimit": 10,
 	"backupRelPath": null,
 	"levelNamePattern": "%world_Level_%idx",
-	"tutorialDesc": "This example demonstrates the use of rules to create complex but dynamic mosaics.",
+	"tutorialDesc": null,
 	"customCommands": [],
 	"flags": [ "ExportOldTableOfContentData", "UseMultilinesType" ],
 	"defs": { "layers": [
@@ -1162,7 +1162,7 @@
 							"defUid": 71,
 							"px": [192,144],
 							"fieldInstances": [
-								{ "__identifier": "radius", "__type": "Float", "__value": 128, "__tile": null, "defUid": 73, "realEditorValues": [] },
+								{ "__identifier": "radius", "__type": "Float", "__value": 256, "__tile": null, "defUid": 73, "realEditorValues": [{ "id": "V_Float", "params": [256] }] },
 								{ "__identifier": "speed", "__type": "Float", "__value": 1000, "__tile": null, "defUid": 74, "realEditorValues": [] }
 							]
 						}
@@ -1228,7 +1228,7 @@
 					"entityInstances": [
 						{
 							"__identifier": "Knight",
-							"__grid": [6,11],
+							"__grid": [7,6],
 							"__pivot": [0,0],
 							"__tags": [ "atlas", "worldly" ],
 							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
@@ -1237,7 +1237,7 @@
 							"width": 32,
 							"height": 32,
 							"defUid": 70,
-							"px": [110,176],
+							"px": [126,96],
 							"fieldInstances": []
 						},
 						{

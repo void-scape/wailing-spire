@@ -5,8 +5,8 @@
         },
         scene_entities: {},
         composites: {
-            ((0), (2)): "ldtk/LevelOne_WallsComposite_composite.png",
             ((0), (37)): "ldtk/LevelOne_BackgroundComposite_composite.png",
+            ((0), (2)): "ldtk/LevelOne_WallsComposite_composite.png",
         },
     ),
 )

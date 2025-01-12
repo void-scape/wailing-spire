@@ -55,6 +55,7 @@ impl Plugin for PhysicsPlugin {
                             spatial::store_static_body_in_spatial_map,
                             collision::handle_collisions,
                             collision::handle_dynamic_body_collsions,
+                            collision::update_grounded,
                         )
                             .chain(),
                         debug::debug_display_collider_wireframe,

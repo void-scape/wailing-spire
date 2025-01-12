@@ -4,3 +4,6 @@
 [submodule "bevy_ldtk_scene"]
 	path = bevy_ldtk_scene
 	url = https://github.com/void-scape/bevy_ldtk_scene
+[submodule "bevy_seedling"]
+	path = bevy_seedling
+	url = https://github.com/corvusprudens/bevy_seedling

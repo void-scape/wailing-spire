@@ -75,7 +75,7 @@ fn input_map() -> InputMap<Action> {
 
 fn collider() -> Collider {
     Collider::from_rect(
-        Vec2::new(TILE_SIZE * 0.75, -TILE_SIZE * 1.75),
+        Vec2::new(TILE_SIZE * 0.75, -TILE_SIZE * 1.25),
         Vec2::splat(TILE_SIZE / 2.),
     )
 }
@@ -138,7 +138,6 @@ fn update(
             (
                 Entity,
                 &ActionState<Action>,
-                &mut Acceleration,
                 &mut AnimationController<PlayerAnimation>,
                 &mut Sprite,
                 &mut Direction,
@@ -153,7 +152,6 @@ fn update(
     if let Some((
         entity,
         action_state,
-        mut acceleration,
         mut animations,
         mut sprite,
         mut direction,
@@ -167,7 +165,9 @@ fn update(
                 animations.set_animation(PlayerAnimation::Run);
             }
             let dir = Direction::from_vec(axis_pair);
-            acceleration.apply_force(dir.into_unit_vec2() * RUN_FORCE);
+
+            velocity.0.x = dir.into_unit_vec2().x * 100.;
+
             *direction = dir;
             *set_idle = false;
         } else {

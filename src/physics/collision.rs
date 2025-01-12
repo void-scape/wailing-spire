@@ -90,14 +90,14 @@ impl AbsoluteCollider {
 
     pub fn max_y(&self) -> f32 {
         match self {
-            Self::Rect(rect) => rect.tl.y + rect.size.y,
+            Self::Rect(rect) => rect.tl.y,
             Self::Circle(circle) => circle.position.y + circle.radius,
         }
     }
 
     pub fn min_y(&self) -> f32 {
         match self {
-            Self::Rect(rect) => rect.tl.y,
+            Self::Rect(rect) => rect.tl.y - rect.size.y,
             Self::Circle(circle) => circle.position.y - circle.radius,
         }
     }
@@ -136,31 +136,35 @@ pub struct RectCollider {
 
 impl RectCollider {
     pub fn br(&self) -> Vec2 {
-        self.tl + self.size
+        Vec2::new(self.tl.x + self.size.x, self.tl.y - self.size.y)
+    }
+
+    pub fn center(&self) -> Vec2 {
+        Vec2::new(self.tl.x + self.size.x * 0.5, self.tl.y - self.size.y * 0.5)
     }
 }
 
 impl CollidesWith<Self> for RectCollider {
     fn collides_with(&self, other: &Self) -> bool {
-        let not_collided = other.tl.y > self.br().y
+        let not_collided = other.tl.y < self.br().y
             || other.tl.x > self.br().x
-            || other.br().y < self.tl.y
+            || other.br().y > self.tl.y
             || other.br().x < self.tl.x;
 
         !not_collided
     }
 
     fn resolution(&self, other: &Self) -> Vec2 {
-        let self_br = self.tl + self.size;
-        let other_br = other.tl + other.size;
+        let self_br = self.br();
+        let other_br = other.br();
 
         // Calculate overlap in both dimensions
         let x_overlap = (self_br.x.min(other_br.x) - self.tl.x.max(other.tl.x)).max(0.);
-        let y_overlap = (self_br.y.min(other_br.y) - self.tl.y.max(other.tl.y)).max(0.);
+        let y_overlap = (self.tl.y.min(other.tl.y) - self_br.y.max(other_br.y)).max(0.);
 
         // Calculate the center points of both rectangles
-        let self_center = self.tl + self.size * 0.5;
-        let other_center = other.tl + other.size * 0.5;
+        let self_center = self.center();
+        let other_center = other.center();
 
         // If no overlap in either dimension, return zero
         if x_overlap == 0. || y_overlap == 0. {
@@ -225,8 +229,10 @@ impl CollidesWith<Self> for CircleCollider {
 
 impl CollidesWith<RectCollider> for CircleCollider {
     fn collides_with(&self, other: &RectCollider) -> bool {
-        let dist_x = (self.position.x - (other.tl.x + other.size.x * 0.5)).abs();
-        let dist_y = (self.position.y - (other.tl.y + other.size.y * 0.5)).abs();
+        let other_center = other.center();
+
+        let dist_x = (self.position.x - other_center.x).abs();
+        let dist_y = (self.position.y - other_center.y).abs();
 
         if dist_x > other.size.x * 0.5 + self.radius {
             return false;
@@ -307,36 +313,24 @@ impl CollidesWith<CircleCollider> for RectCollider {
 }
 
 pub fn handle_collisions(
-    mut commands: Commands,
     static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
-    mut dynamic_bodies: Query<
-        (Entity, &mut Transform, &Collider, &mut Velocity),
-        With<DynamicBody>,
-    >,
+    mut dynamic_bodies: Query<(&mut Transform, &Collider, &mut Velocity), With<DynamicBody>>,
 ) {
     let map = static_body_storage.into_inner();
 
-    for (entity, mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
+    for (mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
         let original_collider = &collider;
         let mut collider = collider.absolute(&transform);
-        let mut grounded = false;
+        // let mut grounded = false;
 
         let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
-        if velocity.0.y > 0. {
-            colliders.sort_by(|d1, d2| {
-                d1.collider
-                    .max_y()
-                    .partial_cmp(&d2.collider.max_y())
-                    .unwrap_or(Ordering::Equal)
-            });
-        } else if velocity.0.y < 0. {
-            colliders.sort_by(|d1, d2| {
-                d2.collider
-                    .max_y()
-                    .partial_cmp(&d1.collider.max_y())
-                    .unwrap_or(Ordering::Equal)
-            });
-        }
+
+        colliders.sort_by(|d1, d2| {
+            let d1 = collider.resolution(&d1.collider).length_squared();
+            let d2 = collider.resolution(&d2.collider).length_squared();
+
+            d2.partial_cmp(&d1).unwrap_or(Ordering::Equal)
+        });
 
         for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
             if collider.collides_with(sc) {
@@ -344,23 +338,60 @@ pub fn handle_collisions(
                 transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
                 collider = original_collider.absolute(&transform);
 
-                if res_v.x.abs() > 0. {
-                    // velocity.0.x = 0.;
-                }
-
                 if res_v.y.abs() > 0. {
-                    grounded = true;
+                    // grounded = true;
                     velocity.0.y = 0.;
-                    commands.entity(entity).insert(Grounded);
+                    // commands.entity(entity).insert(Grounded);
                 }
-                // } else if res_v.y.is_sign_positive() && res_v.x == 0. {
-                //     println!("hi");
-                //     velocity.0.y = 0.;
-                // }
             }
         }
 
-        if !grounded {
+        // if !grounded {
+        //     commands.entity(entity).remove::<Grounded>();
+        // }
+    }
+}
+
+pub fn update_grounded(
+    mut commands: Commands,
+    static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+    mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
+) {
+    let map = static_body_storage.into_inner();
+
+    for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
+        let collider = collider.absolute(transform);
+        let nearby_colliders = map.nearby_objects(&collider.position());
+
+        let mut grounded = false;
+
+        for spatial::SpatialData {
+            collider: static_collider,
+            ..
+        } in nearby_colliders.into_iter()
+        {
+            match (collider, static_collider) {
+                (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
+                    let x_range = b.tl.x..b.br().x;
+
+                    let on_top = (a.br().y - b.tl.y).abs() < 0.1;
+                    let corner_inside = x_range.contains(&a.tl.x) || x_range.contains(&a.br().x);
+                    let no_going_up = velocity.0.y >= 0.;
+
+                    if on_top && corner_inside && no_going_up {
+                        grounded = true;
+                        break;
+                    }
+                }
+                _ => {
+                    todo!("implement more grounded interactions")
+                }
+            }
+        }
+
+        if grounded {
+            commands.entity(entity).insert(Grounded);
+        } else {
             commands.entity(entity).remove::<Grounded>();
         }
     }

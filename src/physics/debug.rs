@@ -24,7 +24,7 @@ impl Collider {
                     Transform::from_xyz(
                         // 0., 0.,
                         rect.tl.x + rect.size.x / 2.,
-                        rect.tl.y + rect.size.y / 2.,
+                        rect.tl.y - rect.size.y / 2.,
                         // rect.tl.x,
                         // rect.tl.y,
                         rand::thread_rng().gen_range(500.0..999.0),
