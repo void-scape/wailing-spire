@@ -642,12 +642,10 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
         *plates = new_plates;
     }
 
-    println!("{:#?}", output);
-
     let mut colliders = Vec::new();
     for plate in output.into_values().flatten() {
         colliders.push((
-            Vec2::new(plate.x_start, plate.y_start),
+            Vec2::new(plate.x_start, plate.y_end),
             Collider::from_rect(
                 Vec2::ZERO,
                 Vec2::new(plate.x_end - plate.x_start, plate.y_end - plate.y_start),

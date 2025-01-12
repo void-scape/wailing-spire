@@ -37,7 +37,7 @@
 	"backupLimit": 10,
 	"backupRelPath": null,
 	"levelNamePattern": "%world_Level_%idx",
-	"tutorialDesc": null,
+	"tutorialDesc": "This example demonstrates the use of rules to create complex but dynamic mosaics.",
 	"customCommands": [],
 	"flags": [ "ExportOldTableOfContentData", "UseMultilinesType" ],
 	"defs": { "layers": [
@@ -872,7 +872,7 @@
 			"tileRect": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
 			"uiTileRect": null,
 			"nineSliceBorders": [],
-			"maxCount": 0,
+			"maxCount": 1,
 			"limitScope": "PerLevel",
 			"limitBehavior": "MoveLastOne",
 			"pivotX": 0,
@@ -1162,7 +1162,7 @@
 							"defUid": 71,
 							"px": [192,144],
 							"fieldInstances": [
-								{ "__identifier": "radius", "__type": "Float", "__value": 256, "__tile": null, "defUid": 73, "realEditorValues": [{ "id": "V_Float", "params": [256] }] },
+								{ "__identifier": "radius", "__type": "Float", "__value": 128, "__tile": null, "defUid": 73, "realEditorValues": [] },
 								{ "__identifier": "speed", "__type": "Float", "__value": 1000, "__tile": null, "defUid": 74, "realEditorValues": [] }
 							]
 						}
@@ -1227,31 +1227,31 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Knight",
-							"__grid": [7,6],
-							"__pivot": [0,0],
-							"__tags": [ "atlas", "worldly" ],
-							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
-							"__smartColor": "#BE4A2F",
-							"iid": "5754df30-c210-11ef-9606-d54d39e2a66d",
-							"width": 32,
-							"height": 32,
-							"defUid": 70,
-							"px": [126,96],
-							"fieldInstances": []
-						},
-						{
 							"__identifier": "MovingPlatform",
-							"__grid": [4,6],
+							"__grid": [10,5],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": { "tilesetUid": 1, "x": 32, "y": 80, "w": 32, "h": 16 },
 							"__smartColor": "#D77643",
-							"iid": "3d0ba5a0-c210-11ef-9606-fdf4b96d2bbb",
+							"iid": "f5f68800-c210-11ef-8898-d9cd697429f0",
 							"width": 16,
 							"height": 16,
 							"defUid": 75,
-							"px": [64,96],
+							"px": [160,80],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Knight",
+							"__grid": [5,6],
+							"__pivot": [0,0],
+							"__tags": [ "atlas", "worldly" ],
+							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
+							"__smartColor": "#BE4A2F",
+							"iid": "008d6860-c210-11ef-8898-0921b7fa16ba",
+							"width": 32,
+							"height": 32,
+							"defUid": 70,
+							"px": [80,96],
 							"fieldInstances": []
 						}
 					]
