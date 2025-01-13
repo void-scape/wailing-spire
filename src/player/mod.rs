@@ -19,18 +19,27 @@ use leafwing_input_manager::{
 };
 use std::hash::Hash;
 
+mod hook;
+
+pub use hook::HookTarget;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_required_components::<crate::spire::Knight, Player>()
+            .init_resource::<hook::ViableTargets>()
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
             ))
+            .add_systems(Startup, hook::spawn_hook)
             .add_systems(
                 Update,
-                (manage_brushing_move, update, jump, update_current_level).chain(),
+                (
+                    (manage_brushing_move, update, jump, update_current_level).chain(),
+                    (hook::gather_viable_targets, hook::move_hook),
+                ),
             )
             .add_systems(
                 PostUpdate,

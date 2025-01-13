@@ -8,6 +8,7 @@ const SPEED: f32 = 100.;
 #[require(AnimationController<DinoAnimation>(animation_controller))]
 #[require(Velocity(velocity), DynamicBody, Collider(collider))]
 #[require(layers::CollidesWith<layers::Wall>)]
+#[require(crate::player::HookTarget)]
 pub struct Dino;
 
 impl Dino {
