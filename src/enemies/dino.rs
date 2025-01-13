@@ -40,20 +40,20 @@ fn collider() -> Collider {
     )
 }
 
-pub fn flip_dino_right(
-    mut dino_query: Query<(&mut Sprite, &mut Velocity), (With<Dino>, With<BrushingRight>)>,
+pub fn flip_dino(
+    mut dino_query: Query<(&mut Sprite, &mut Velocity), (With<Dino>, With<Collision>)>,
 ) {
     for (mut sprite, mut vel) in dino_query.iter_mut() {
-        *vel = Velocity(Dino::LEFT);
-        sprite.flip_x = true;
-    }
-}
-
-pub fn flip_dino_left(
-    mut dino_query: Query<(&mut Sprite, &mut Velocity), (With<Dino>, With<BrushingLeft>)>,
-) {
-    for (mut sprite, mut vel) in dino_query.iter_mut() {
-        *vel = Velocity(Dino::RIGHT);
-        sprite.flip_x = false;
+        match vel.0 {
+            Dino::LEFT => {
+                *vel = Velocity(Dino::RIGHT);
+                sprite.flip_x = false;
+            }
+            Dino::RIGHT => {
+                *vel = Velocity(Dino::LEFT);
+                sprite.flip_x = true;
+            }
+            _ => unreachable!(),
+        }
     }
 }

@@ -9,6 +9,6 @@ impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(AnimationPlugin::<dino::DinoAnimation>::default())
             .register_required_components::<spire::Dino, dino::Dino>()
-            .add_systems(Update, (dino::flip_dino_left, dino::flip_dino_right));
+            .add_systems(Update, dino::flip_dino);
     }
 }

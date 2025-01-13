@@ -10,7 +10,11 @@ use bevy::{
     utils::hashbrown::{HashMap, HashSet},
 };
 use spatial::{SpatialHash, StaticBodyData};
-use std::{cmp::Ordering, marker::PhantomData};
+use std::cmp::Ordering;
+
+/// Marks an entity as having experienced a collision.
+#[derive(Default, Component)]
+pub struct Collision;
 
 /// Marks this entity as having a static position throughout the lifetime of the program.
 ///
@@ -320,18 +324,19 @@ impl CollidesWith<CircleCollider> for RectCollider {
 }
 
 pub fn handle_collisions<T: Component>(
+    mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
     mut dynamic_bodies: Query<
-        (&mut Transform, &Collider, &mut Velocity),
+        (Entity, &mut Transform, &Collider, &mut Velocity),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
 ) {
-    for (mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
+    for (entity, mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
+        let mut collision = false;
+
         for map in map_query.iter() {
             let original_collider = &collider;
             let mut collider = collider.absolute(&transform);
-            // let mut grounded = false;
-
             let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
 
             colliders.sort_by(|d1, d2| {
@@ -343,6 +348,7 @@ pub fn handle_collisions<T: Component>(
 
             for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
                 if collider.collides_with(sc) {
+                    collision = true;
                     let res_v = collider.resolution(sc);
                     transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
                     collider = original_collider.absolute(&transform);
@@ -352,6 +358,12 @@ pub fn handle_collisions<T: Component>(
                     }
                 }
             }
+        }
+
+        if collision {
+            commands.entity(entity).insert(Collision);
+        } else {
+            commands.entity(entity).remove::<Collision>();
         }
     }
 }
