@@ -116,26 +116,24 @@ impl<D: Clone> SpatialHash<D> {
     }
 }
 
-#[derive(Component)]
-pub struct StaticBodyStorage;
-
 pub type StaticBodyData = Option<TriggerLayer>;
 
-// TODO: should there be a spatial hash for each level?
-pub fn init_static_body_storage(mut commands: Commands) {
-    commands.spawn((SpatialHash::<StaticBodyData>::new(32.), StaticBodyStorage));
-}
-
 pub fn store_static_body_in_spatial_map(
-    map: Single<&mut SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
-    static_body: Query<(Entity, &Transform, &Collider, Option<&TriggerLayer>), Added<StaticBody>>,
+    mut hash: Query<(&mut SpatialHash<StaticBodyData>, &Children)>,
+    static_body: Query<
+        (Entity, &GlobalTransform, &Collider, Option<&TriggerLayer>),
+        Added<StaticBody>,
+    >,
 ) {
-    let mut map = map.into_inner();
-    for (entity, transform, collider, trigger_layer) in static_body.iter() {
-        map.insert(SpatialData {
-            collider: collider.absolute(transform),
-            data: trigger_layer.cloned(),
-            entity,
-        })
+    for (mut map, children) in hash.iter_mut() {
+        for child in children.iter() {
+            if let Ok((entity, transform, collider, trigger_layer)) = static_body.get(*child) {
+                map.insert(SpatialData {
+                    collider: collider.absolute(&transform.compute_transform()),
+                    data: trigger_layer.cloned(),
+                    entity,
+                })
+            }
+        }
     }
 }

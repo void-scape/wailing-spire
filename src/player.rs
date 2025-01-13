@@ -3,11 +3,11 @@ use crate::{
     animation::{AnimationController, AnimationPlugin},
     physics::prelude::*,
 };
-use bevy::ecs::component::ComponentId;
-use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
-use bevy_pixel_gfx::camera::{bind_camera, MainCamera};
+use bevy_ldtk_scene::extract::levels::LevelMeta;
+use bevy_ldtk_scene::levels::Level;
+use bevy_pixel_gfx::camera::MainCamera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, zorder::YOrigin};
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
@@ -28,7 +28,10 @@ impl Plugin for PlayerPlugin {
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
             ))
-            .add_systems(Update, (manage_brushing_move, update, jump).chain())
+            .add_systems(
+                Update,
+                (manage_brushing_move, update, jump, update_current_level).chain(),
+            )
             .add_systems(
                 PostUpdate,
                 move_camera.before(TransformSystem::TransformPropagate),
@@ -44,7 +47,6 @@ const AIR_DAMPING: f32 = 0.08;
 const SLIDE_SPEED: f32 = 20.;
 const WALL_STICK_TIME: f32 = 0.20;
 
-const RUN_FORCE: f32 = 40.;
 const JUMP_SPEED: f32 = 200.;
 const JUMP_MAX_DURATION: f32 = 0.2;
 
@@ -57,12 +59,7 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 #[require(AnchorTarget)]
 #[require(BrushingMove)]
-#[component(on_insert = on_insert_player)]
 pub struct Player;
-
-fn on_insert_player(mut world: DeferredWorld, _: Entity, _: ComponentId) {
-    // world.commands().run_system_cached(bind_camera::<Player>);
-}
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(
@@ -140,22 +137,52 @@ impl Direction {
 //     }
 // }
 
+#[derive(Component)]
+struct CurrentLevel(LevelMeta);
+
+fn update_current_level(
+    mut commands: Commands,
+    player: Query<(Entity, &GlobalTransform), With<Player>>,
+    level_query: Query<(&GlobalTransform, &Level)>,
+) {
+    let Ok((entity, player)) = player.get_single() else {
+        return;
+    };
+
+    if let Some(level) = level_query
+        .iter()
+        .find(|(t, l)| l.meta().rect(t).contains(player.translation().xy()))
+        .map(|(_, l)| l)
+    {
+        commands.entity(entity).insert(CurrentLevel(*level.meta()));
+    }
+}
+
 fn move_camera(
     mut cam: Query<&mut Transform, With<MainCamera>>,
-    player: Query<&Transform, (With<Player>, Without<MainCamera>)>,
+    player: Query<(&GlobalTransform, &CurrentLevel), (With<Player>, Without<MainCamera>)>,
+    level_query: Query<(&GlobalTransform, &Level)>,
 ) {
     let Ok(mut cam) = cam.get_single_mut() else {
         return;
     };
 
-    let Ok(player) = player.get_single() else {
+    let Ok((player, level)) = player.get_single() else {
         return;
     };
 
-    let target_position = Vec3::new(184., player.translation.y + TILE_SIZE * 1.5, 0.);
-    let delta = target_position - cam.translation;
+    if let Some(level_transform) = level_query
+        .iter()
+        .find(|(_, l)| l.uid() == level.0.uid)
+        .map(|(t, _)| t)
+    {
+        // let x = level.0.size.x / 2. + level_transform.translation().x;
+        let x = player.translation().x;
+        let target_position = Vec3::new(x, player.translation().y + TILE_SIZE * 1.5, 0.);
+        let delta = target_position - cam.translation;
 
-    cam.translation += delta * 0.05;
+        cam.translation += delta * 0.05;
+    }
 }
 
 #[derive(Component)]

@@ -124,8 +124,8 @@ pub fn debug_show_trigger_color(
 }
 
 pub fn debug_show_collision_color(
-    static_bodies: Query<(&Transform, &Collider, &Children), With<StaticBody>>,
-    dynamic_bodies: Query<(&Transform, &Collider), With<DynamicBody>>,
+    static_bodies: Query<(&GlobalTransform, &Collider, &Children), With<StaticBody>>,
+    dynamic_bodies: Query<(&GlobalTransform, &Collider), With<DynamicBody>>,
     mut wireframes: Query<&mut Wireframe2dColor>,
 ) {
     for mut frame in wireframes.iter_mut() {
@@ -133,9 +133,9 @@ pub fn debug_show_collision_color(
     }
 
     for (dyn_t, dyn_c) in dynamic_bodies.iter() {
-        let dyn_c = dyn_c.absolute(dyn_t);
+        let dyn_c = dyn_c.absolute(&dyn_t.compute_transform());
         for (t, c, children) in static_bodies.iter() {
-            if dyn_c.collides_with(&c.absolute(t)) {
+            if dyn_c.collides_with(&c.absolute(&t.compute_transform())) {
                 for child in children.iter() {
                     if let Ok(mut frame) = wireframes.get_mut(*child) {
                         frame.color = Srgba::RED.into();

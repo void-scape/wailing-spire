@@ -1,19 +1,33 @@
 ([
     (
-        uid: (75),
-        xyz: (160.0, -80.0, 4.0),
+        uid: (78),
+        xyz: (176.0, -144.0, 4.0),
         sprite: Some((
-            image: "ldtk/../sprites/tilesets/Inca_front_by_Kronbits-extended.png",
-            tileset: (1),
+            image: "ldtk/../sprites/characters/dino.png",
+            tileset: (79),
             atlas: Rect((
-                min: (32.0, 80.0),
-                max: (64.0, 96.0),
+                min: (0.0, 0.0),
+                max: (24.0, 24.0),
             )),
         )),
+        worldly: false,
+    ),
+    (
+        uid: (78),
+        xyz: (80.0, -32.0, 4.0),
+        sprite: Some((
+            image: "ldtk/../sprites/characters/dino.png",
+            tileset: (79),
+            atlas: Rect((
+                min: (0.0, 0.0),
+                max: (24.0, 24.0),
+            )),
+        )),
+        worldly: false,
     ),
     (
         uid: (70),
-        xyz: (160.0, -176.0, 4.0),
+        xyz: (288.0, -32.0, 4.0),
         sprite: Some((
             image: "ldtk/../sprites/characters/knight.png",
             tileset: (69),
@@ -279,5 +293,19 @@
                 ],
             )),
         )),
+        worldly: true,
+    ),
+    (
+        uid: (78),
+        xyz: (240.0, -16.0, 4.0),
+        sprite: Some((
+            image: "ldtk/../sprites/characters/dino.png",
+            tileset: (79),
+            atlas: Rect((
+                min: (0.0, 0.0),
+                max: (24.0, 24.0),
+            )),
+        )),
+        worldly: false,
     ),
 ])

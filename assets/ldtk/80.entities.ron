@@ -1,0 +1,15 @@
+([
+    (
+        uid: (78),
+        xyz: (64.0, -32.0, 4.0),
+        sprite: Some((
+            image: "ldtk/../sprites/characters/dino.png",
+            tileset: (79),
+            atlas: Rect((
+                min: (0.0, 0.0),
+                max: (24.0, 24.0),
+            )),
+        )),
+        worldly: false,
+    ),
+])

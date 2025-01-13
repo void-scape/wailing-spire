@@ -5,8 +5,11 @@ use super::{
 };
 use crate::spire::TileSolid;
 use crate::TILE_SIZE;
-use bevy::{prelude::*, utils::hashbrown::HashMap};
-use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
+use bevy::{
+    prelude::*,
+    utils::hashbrown::{HashMap, HashSet},
+};
+use spatial::{SpatialHash, StaticBodyData};
 use std::cmp::Ordering;
 
 /// Marks this entity as having a static position throughout the lifetime of the program.
@@ -317,33 +320,33 @@ impl CollidesWith<CircleCollider> for RectCollider {
 }
 
 pub fn handle_collisions(
-    static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+    map_query: Query<&SpatialHash<StaticBodyData>>,
     mut dynamic_bodies: Query<(&mut Transform, &Collider, &mut Velocity), With<DynamicBody>>,
 ) {
-    let map = static_body_storage.into_inner();
-
     for (mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
-        let original_collider = &collider;
-        let mut collider = collider.absolute(&transform);
-        // let mut grounded = false;
+        for map in map_query.iter() {
+            let original_collider = &collider;
+            let mut collider = collider.absolute(&transform);
+            // let mut grounded = false;
 
-        let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
+            let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
 
-        colliders.sort_by(|d1, d2| {
-            let d1 = collider.resolution(&d1.collider).length_squared();
-            let d2 = collider.resolution(&d2.collider).length_squared();
+            colliders.sort_by(|d1, d2| {
+                let d1 = collider.resolution(&d1.collider).length_squared();
+                let d2 = collider.resolution(&d2.collider).length_squared();
 
-            d2.partial_cmp(&d1).unwrap_or(Ordering::Equal)
-        });
+                d2.partial_cmp(&d1).unwrap_or(Ordering::Equal)
+            });
 
-        for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
-            if collider.collides_with(sc) {
-                let res_v = collider.resolution(sc);
-                transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
-                collider = original_collider.absolute(&transform);
+            for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
+                if collider.collides_with(sc) {
+                    let res_v = collider.resolution(sc);
+                    transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
+                    collider = original_collider.absolute(&transform);
 
-                if res_v.y.abs() > 0. {
-                    velocity.0.y = 0.;
+                    if res_v.y.abs() > 0. {
+                        velocity.0.y = 0.;
+                    }
                 }
             }
         }
@@ -352,37 +355,38 @@ pub fn handle_collisions(
 
 pub fn update_grounded(
     mut commands: Commands,
-    static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+    map_query: Query<&SpatialHash<StaticBodyData>>,
     mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
 ) {
-    let map = static_body_storage.into_inner();
-
     for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
-        let collider = collider.absolute(transform);
-        let nearby_colliders = map.nearby_objects(&collider.position());
-
         let mut grounded = false;
 
-        for spatial::SpatialData {
-            collider: static_collider,
-            ..
-        } in nearby_colliders.into_iter()
-        {
-            match (collider, static_collider) {
-                (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
-                    let x_range = b.tl.x..b.br().x;
+        for map in map_query.iter() {
+            let collider = collider.absolute(transform);
+            let nearby_colliders = map.nearby_objects(&collider.position());
 
-                    let on_top = (a.br().y - b.tl.y).abs() < 0.1;
-                    let corner_inside = x_range.contains(&a.tl.x) || x_range.contains(&a.br().x);
-                    let no_going_up = velocity.0.y >= 0.;
+            for spatial::SpatialData {
+                collider: static_collider,
+                ..
+            } in nearby_colliders.into_iter()
+            {
+                match (collider, static_collider) {
+                    (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
+                        let x_range = b.tl.x..b.br().x;
 
-                    if on_top && corner_inside && no_going_up {
-                        grounded = true;
-                        break;
+                        let on_top = (a.br().y - b.tl.y).abs() < 0.1;
+                        let corner_inside =
+                            x_range.contains(&a.tl.x) || x_range.contains(&a.br().x);
+                        let no_going_up = velocity.0.y >= 0.;
+
+                        if on_top && corner_inside && no_going_up {
+                            grounded = true;
+                            break;
+                        }
                     }
-                }
-                _ => {
-                    todo!("implement more grounded interactions")
+                    _ => {
+                        todo!("implement more grounded interactions")
+                    }
                 }
             }
         }
@@ -397,47 +401,48 @@ pub fn update_grounded(
 
 pub fn update_brushing(
     mut commands: Commands,
-    static_body_storage: Single<&SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+    map_query: Query<&SpatialHash<StaticBodyData>>,
     mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
 ) {
-    let map = static_body_storage.into_inner();
-
     for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
-        let collider = collider.absolute(transform);
-        let nearby_colliders = map.nearby_objects(&collider.position());
-
         let mut left = false;
         let mut right = false;
 
-        for spatial::SpatialData {
-            collider: static_collider,
-            ..
-        } in nearby_colliders
-        {
-            match (collider, static_collider) {
-                (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
-                    let y_range = b.br().y..b.tl.y;
+        for map in map_query.iter() {
+            let collider = collider.absolute(transform);
+            let nearby_colliders = map.nearby_objects(&collider.position());
 
-                    let corner_inside = y_range.contains(&a.tl.y) || y_range.contains(&a.br().y);
+            for spatial::SpatialData {
+                collider: static_collider,
+                ..
+            } in nearby_colliders
+            {
+                match (collider, static_collider) {
+                    (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
+                        let y_range = b.br().y..b.tl.y;
 
-                    // left
-                    let adjacent = (a.tl.x - b.br().x).abs() < 0.1;
-                    let no_going_right = velocity.0.x <= 0.;
+                        let corner_inside =
+                            y_range.contains(&a.tl.y) || y_range.contains(&a.br().y);
 
-                    if adjacent && corner_inside && no_going_right {
-                        left = true;
+                        // left
+                        let adjacent = (a.tl.x - b.br().x).abs() < 0.1;
+                        let no_going_right = velocity.0.x <= 0.;
+
+                        if adjacent && corner_inside && no_going_right {
+                            left = true;
+                        }
+
+                        // right
+                        let adjacent = (a.br().x - b.tl.x).abs() < 0.1;
+                        let no_going_left = velocity.0.x >= 0.;
+
+                        if adjacent && corner_inside && no_going_left {
+                            right = true;
+                        }
                     }
-
-                    // right
-                    let adjacent = (a.br().x - b.tl.x).abs() < 0.1;
-                    let no_going_left = velocity.0.x >= 0.;
-
-                    if adjacent && corner_inside && no_going_left {
-                        right = true;
+                    _ => {
+                        todo!("implement more grounded interactions")
                     }
-                }
-                _ => {
-                    todo!("implement more grounded interactions")
                 }
             }
         }
@@ -545,35 +550,38 @@ pub fn build_tile_set_colliders(
         .map(|(_, p)| levels.get(p.get()).unwrap())
         .unwrap();
 
-    let mut cached_collider_positions = Vec::with_capacity(1024);
+    let mut parents = HashSet::<Entity>::default();
+    for (_, parent) in tiles.iter() {
+        parents.insert(parent.get());
+    }
+
     let tile_size = TILE_SIZE;
-
     let offset = tile_size / 2.;
-    for transform in tiles.iter().map(|(t, _)| t)
-    // .chain(manual_collision.iter())
-    {
-        cached_collider_positions.push(Vec2::new(
-            transform.translation.x + offset,
-            transform.translation.y + offset,
-        ));
-    }
 
-    if cached_collider_positions.is_empty() {
-        return;
-    }
+    for parent in parents.into_iter() {
+        let cached_collider_positions = tiles
+            .iter()
+            .filter(|(_, p)| p.get() == parent)
+            .map(|(t, _)| Vec2::new(t.translation.x + offset, t.translation.y + offset))
+            .collect::<Vec<_>>();
 
-    commands.entity(level).with_children(|level| {
-        for (pos, collider) in
-            build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
-        {
-            level.spawn((
-                Transform::from_translation((pos - Vec2::splat(tile_size / 2.)).extend(0.)),
-                StaticBody,
-                collider,
-            ));
-            //num_colliders += 1;
+        if cached_collider_positions.is_empty() {
+            return;
         }
-    });
+
+        commands.entity(parent).with_children(|level| {
+            for (pos, collider) in
+                build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
+            {
+                level.spawn((
+                    Transform::from_translation((pos - Vec2::splat(tile_size / 2.)).extend(0.)),
+                    StaticBody,
+                    collider,
+                ));
+                //num_colliders += 1;
+            }
+        });
+    }
 
     //println!("num_colliders: {num_colliders}");
 }

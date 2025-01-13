@@ -1,12 +1,11 @@
 use bevy::app::FixedMainScheduleOrder;
 use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
-use gravity::Gravity;
 
 pub mod collision;
 pub mod debug;
 pub mod gravity;
-mod spatial;
+pub mod spatial;
 pub mod trigger;
 pub mod velocity;
 
@@ -41,7 +40,6 @@ impl Plugin for PhysicsPlugin {
             .add_event::<trigger::TriggerEvent>()
             .insert_resource(trigger::TriggerLayerRegistry::default())
             .insert_resource(debug::ShowCollision(false))
-            .add_systems(Startup, spatial::init_static_body_storage)
             .add_systems(Update, collision::build_tile_set_colliders)
             .add_systems(
                 Physics,

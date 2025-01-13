@@ -5,9 +5,13 @@ use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
-use bevy_ldtk_scene::{HotWorld, World};
+use bevy_ldtk_scene::{prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
-use physics::gravity::Gravity;
+use physics::{
+    gravity::Gravity,
+    spatial::{SpatialHash, StaticBodyData},
+};
+use spire::*;
 
 mod animation;
 mod entity_registry;
@@ -32,10 +36,13 @@ fn main() {
             spire::SpirePlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
+        .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {
+            SpatialHash::<StaticBodyData>::new(32.)
+        })
         .insert_resource(Gravity(Vec2::NEG_Y * 15.))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
-        // .add_systems(Update, restart)
+        .add_systems(Update, despawn)
         .run();
 }
 
@@ -51,27 +58,18 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
     commands.spawn((
         HotWorld(server.load("ldtk/spire.ldtk")),
         World(server.load("ldtk/spire.ron")),
-        // LevelSelect::new(spire::level_one::LevelOne),
+        LevelLoader::levels_with_offset((StartLevel, RightLevel), Vec2::ZERO),
     ));
 }
 
-// fn restart(
-//     mut commands: Commands,
-//     mut reader: EventReader<KeyboardInput>,
-//     server: Res<AssetServer>,
-//     world_query: Query<Entity, With<World>>,
-// ) {
-//     if reader
-//         .read()
-//         .any(|i| !i.repeat && i.key_code == KeyCode::KeyR && i.state == ButtonState::Pressed)
-//     {
-//         for entity in world_query.iter() {
-//             commands.entity(entity).despawn_recursive();
-//         }
-//
-//         commands.spawn((
-//             World(server.load("ldtk/spire.ldtk")),
-//             LevelSelect::new(spire::level_one::LevelOne),
-//         ));
-//     }
-// }
+fn despawn(mut reader: EventReader<KeyboardInput>, loader: Option<Single<&mut LevelLoader>>) {
+    if reader
+        .read()
+        .any(|i| !i.repeat && i.key_code == KeyCode::KeyR && i.state == ButtonState::Pressed)
+    {
+        if let Some(mut loader) = loader {
+            println!("despawning right");
+            loader.despawn(RightLevel::uid());
+        }
+    }
+}
