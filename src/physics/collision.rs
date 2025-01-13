@@ -10,7 +10,7 @@ use bevy::{
     utils::hashbrown::{HashMap, HashSet},
 };
 use spatial::{SpatialHash, StaticBodyData};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, marker::PhantomData};
 
 /// Marks this entity as having a static position throughout the lifetime of the program.
 ///
@@ -319,9 +319,12 @@ impl CollidesWith<CircleCollider> for RectCollider {
     }
 }
 
-pub fn handle_collisions(
-    map_query: Query<&SpatialHash<StaticBodyData>>,
-    mut dynamic_bodies: Query<(&mut Transform, &Collider, &mut Velocity), With<DynamicBody>>,
+pub fn handle_collisions<T: Component>(
+    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    mut dynamic_bodies: Query<
+        (&mut Transform, &Collider, &mut Velocity),
+        (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
+    >,
 ) {
     for (mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
         for map in map_query.iter() {
@@ -353,10 +356,13 @@ pub fn handle_collisions(
     }
 }
 
-pub fn update_grounded(
+pub fn update_grounded<T: Component>(
     mut commands: Commands,
-    map_query: Query<&SpatialHash<StaticBodyData>>,
-    mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
+    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    mut dynamic_bodies: Query<
+        (Entity, &Transform, &Collider, &Velocity),
+        (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
+    >,
 ) {
     for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
         let mut grounded = false;
@@ -399,10 +405,13 @@ pub fn update_grounded(
     }
 }
 
-pub fn update_brushing(
+pub fn update_brushing<T: Component>(
     mut commands: Commands,
-    map_query: Query<&SpatialHash<StaticBodyData>>,
-    mut dynamic_bodies: Query<(Entity, &Transform, &Collider, &Velocity), With<DynamicBody>>,
+    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    mut dynamic_bodies: Query<
+        (Entity, &Transform, &Collider, &Velocity),
+        (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
+    >,
 ) {
     for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
         let mut left = false;
@@ -461,14 +470,22 @@ pub fn update_brushing(
     }
 }
 
-pub fn handle_dynamic_body_collsions(
+pub fn handle_dynamic_body_collsions<T: Component>(
     mut dynamic_bodies: Query<
         (Entity, &mut Transform, &Collider, Option<&Massive>),
-        With<DynamicBody>,
+        (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
+    >,
+    other_bodies: Query<
+        (Entity, &Transform, &Collider, Option<&Massive>),
+        (
+            With<DynamicBody>,
+            With<T>,
+            Without<super::layers::CollidesWith<T>>,
+        ),
     >,
 ) {
-    let mut dynamic_bodies = dynamic_bodies.iter_mut().collect::<Vec<_>>();
-    dynamic_bodies.sort_by_key(|(_, _, _, m)| {
+    let mut other_bodies = other_bodies.iter().collect::<Vec<_>>();
+    other_bodies.sort_by_key(|(_, _, _, m)| {
         if m.is_some() {
             Ordering::Greater
         } else {
@@ -478,7 +495,7 @@ pub fn handle_dynamic_body_collsions(
 
     let mut spatial = spatial::SpatialHash::new(32.);
 
-    for (entity, transform, collider, massive) in dynamic_bodies.iter() {
+    for (entity, transform, collider, massive) in other_bodies.iter() {
         let absolute = collider.absolute(transform);
         spatial.insert(spatial::SpatialData {
             collider: absolute,
@@ -487,9 +504,9 @@ pub fn handle_dynamic_body_collsions(
         });
     }
 
-    for (entity, transform, collider, massive) in dynamic_bodies.iter_mut() {
+    for (entity, mut transform, collider, massive) in dynamic_bodies.iter_mut() {
         let original_collider = &collider;
-        let mut collider = collider.absolute(transform);
+        let mut collider = collider.absolute(&transform);
 
         let mut update_active = false;
 
@@ -503,10 +520,10 @@ pub fn handle_dynamic_body_collsions(
             ..
         } in spatial.nearby_objects(&collider.position())
         {
-            if *entity != *se && collider.collides_with(sc) && massive.is_none() {
+            if collider.collides_with(sc) && massive.is_none() {
                 let res_v = collider.resolution(sc);
                 transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
-                collider = original_collider.absolute(transform);
+                collider = original_collider.absolute(&transform);
                 update_active = true;
             }
         }
@@ -518,7 +535,7 @@ pub fn handle_dynamic_body_collsions(
                 ..
             } in spatial.objects_in_cell_mut(&collider.position())
             {
-                if *se == *entity {
+                if *se == entity {
                     *sc = collider;
                     break;
                 }

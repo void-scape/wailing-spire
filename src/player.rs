@@ -59,6 +59,8 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 #[require(AnchorTarget)]
 #[require(BrushingMove)]
+#[require(layers::CollidesWith<layers::Wall>)]
+#[require(layers::Player)]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {

@@ -1,10 +1,12 @@
 use bevy::app::FixedMainScheduleOrder;
 use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use layers::RegisterCollisionLayer;
 
 pub mod collision;
 pub mod debug;
 pub mod gravity;
+pub mod layers;
 pub mod spatial;
 pub mod trigger;
 pub mod velocity;
@@ -13,6 +15,7 @@ pub mod velocity;
 pub mod prelude {
     pub use super::collision::*;
     pub use super::gravity::*;
+    pub use super::layers;
     pub use super::trigger::*;
     pub use super::velocity::*;
 }
@@ -36,6 +39,12 @@ impl Plugin for PhysicsPlugin {
             .resource_mut::<FixedMainScheduleOrder>()
             .insert_after(FixedUpdate, Physics);
 
+        app.register_collision_layer::<layers::Player>()
+            .register_collision_layer::<layers::Wall>()
+            .register_collision_layer::<layers::Enemy>();
+
+        app.register_required_components::<spatial::SpatialHash<spatial::StaticBodyData>, layers::Wall>();
+
         app.add_plugins(Wireframe2dPlugin)
             .add_event::<trigger::TriggerEvent>()
             .insert_resource(trigger::TriggerLayerRegistry::default())
@@ -47,16 +56,19 @@ impl Plugin for PhysicsPlugin {
                     (gravity::apply_gravity, velocity::apply_velocity)
                         .chain()
                         .in_set(PhysicsSystems::Velocity),
+                    spatial::store_static_body_in_spatial_map
+                        .after(PhysicsSystems::Velocity)
+                        .before(PhysicsSystems::Collision),
                     (
                         (trigger::register_trigger_layers, trigger::handle_triggers),
-                        (
-                            spatial::store_static_body_in_spatial_map,
-                            collision::handle_collisions,
-                            collision::handle_dynamic_body_collsions,
-                            collision::update_grounded,
-                            collision::update_brushing,
-                        )
-                            .chain(),
+                        // (
+                        //     spatial::store_static_body_in_spatial_map,
+                        //     collision::handle_collisions,
+                        //     collision::handle_dynamic_body_collsions,
+                        //     collision::update_grounded,
+                        //     collision::update_brushing,
+                        // )
+                        //     .chain(),
                         debug::debug_display_collider_wireframe,
                         debug::update_show_collision,
                         (
