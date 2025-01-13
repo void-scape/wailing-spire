@@ -41,7 +41,7 @@ fn main() {
         .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {
             SpatialHash::<StaticBodyData>::new(32.)
         })
-        .insert_resource(Gravity(Vec2::NEG_Y * 15.))
+        .insert_resource(Gravity(Vec2::NEG_Y * 12.))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
         .add_systems(Update, despawn)

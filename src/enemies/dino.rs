@@ -2,7 +2,7 @@ use crate::{animation::AnimationController, physics::prelude::*, TILE_SIZE};
 use bevy::prelude::*;
 use rand::Rng;
 
-const SPEED: f32 = 100.;
+const SPEED: f32 = 50.;
 
 #[derive(Default, Component)]
 #[require(AnimationController<DinoAnimation>(animation_controller))]

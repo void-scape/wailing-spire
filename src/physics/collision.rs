@@ -85,6 +85,13 @@ impl AbsoluteCollider {
         }
     }
 
+    pub fn center(&self) -> Vec2 {
+        match self {
+            Self::Rect(r) => r.center(),
+            Self::Circle(c) => c.position,
+        }
+    }
+
     pub fn max_x(&self) -> f32 {
         match self {
             Self::Rect(rect) => rect.tl.x + rect.size.x,

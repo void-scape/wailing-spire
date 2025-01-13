@@ -1270,7 +1270,7 @@
 					"entityInstances": [
 						{
 							"__identifier": "Dino",
-							"__grid": [6,2],
+							"__grid": [8,0],
 							"__pivot": [0,0],
 							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 79, "x": 0, "y": 0, "w": 24, "h": 24 },
@@ -1279,10 +1279,10 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 78,
-							"px": [96,32],
+							"px": [128,0],
 							"fieldInstances": [],
-							"__worldX": 96,
-							"__worldY": 304
+							"__worldX": 128,
+							"__worldY": 272
 						},
 						{
 							"__identifier": "Dino",
@@ -1302,7 +1302,7 @@
 						},
 						{
 							"__identifier": "Knight",
-							"__grid": [18,2],
+							"__grid": [10,11],
 							"__pivot": [0,0],
 							"__tags": [ "atlas", "worldly" ],
 							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
@@ -1311,10 +1311,10 @@
 							"width": 32,
 							"height": 32,
 							"defUid": 70,
-							"px": [288,32],
+							"px": [160,176],
 							"fieldInstances": [],
-							"__worldX": 288,
-							"__worldY": 304
+							"__worldX": 160,
+							"__worldY": 448
 						}
 					]
 				},

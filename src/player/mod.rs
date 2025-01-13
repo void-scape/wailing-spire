@@ -48,8 +48,8 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+const MAX_VEL: f32 = 300.;
 const MAX_X_VEL: f32 = 100.;
-const MAX_Y_VEL: f32 = 250.;
 const WALL_IMPULSE: f32 = 400.;
 const AIR_ACCEL: f32 = 0.08;
 const AIR_DAMPING: f32 = 0.08;
@@ -63,7 +63,7 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(Velocity, Gravitational, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
-#[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::new(WALL_IMPULSE, MAX_Y_VEL))))]
+#[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
 #[require(BrushingMove)]
