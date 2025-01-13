@@ -8,7 +8,7 @@ use bevy::time::Stopwatch;
 use bevy_ldtk_scene::extract::levels::LevelMeta;
 use bevy_ldtk_scene::levels::Level;
 use bevy_pixel_gfx::camera::MainCamera;
-use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, zorder::YOrigin};
+use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
 };
@@ -53,10 +53,9 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
-#[require(Velocity, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
+#[require(Velocity, Gravitational, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
 #[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::new(WALL_IMPULSE, MAX_Y_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
-#[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 #[require(AnchorTarget)]
 #[require(BrushingMove)]
 #[require(layers::CollidesWith<layers::Wall>)]
@@ -178,8 +177,8 @@ fn move_camera(
         .find(|(_, l)| l.uid() == level.0.uid)
         .map(|(t, _)| t)
     {
-        // let x = level.0.size.x / 2. + level_transform.translation().x;
-        let x = player.translation().x;
+        let x = level.0.size.x / 2. + level_transform.translation().x;
+        // let x = player.translation().x;
         let target_position = Vec3::new(x, player.translation().y + TILE_SIZE * 1.5, 0.);
         let delta = target_position - cam.translation;
 

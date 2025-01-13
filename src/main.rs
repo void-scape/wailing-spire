@@ -14,6 +14,7 @@ use physics::{
 use spire::*;
 
 mod animation;
+mod enemies;
 mod entity_registry;
 mod physics;
 mod player;
@@ -34,6 +35,7 @@ fn main() {
             entity_registry::EntityRegistryPlugin,
             physics::PhysicsPlugin,
             spire::SpirePlugin,
+            enemies::EnemyPlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {

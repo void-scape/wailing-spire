@@ -55,6 +55,16 @@ impl<A: Animation> AnimationController<A> {
         }
     }
 
+    pub fn new_with(
+        speed: f32,
+        map: impl std::iter::IntoIterator<Item = (A, (usize, usize))>,
+        animation: A,
+    ) -> Self {
+        let mut slf = Self::new(speed, map);
+        slf.set_animation(animation);
+        slf
+    }
+
     pub fn index(&self) -> Option<usize> {
         self.active_index.as_ref().map(|(_, _, i)| *i)
     }

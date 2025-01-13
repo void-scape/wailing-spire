@@ -1,8 +1,8 @@
 (
     io: (
         scene_tiles: {
-            (80): "ldtk/80.tiles.ron",
             (0): "ldtk/0.tiles.ron",
+            (80): "ldtk/80.tiles.ron",
         },
         scene_entities: {
             (0): "ldtk/0.entities.ron",

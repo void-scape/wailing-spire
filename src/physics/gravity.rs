@@ -17,9 +17,13 @@ pub struct BrushingLeft;
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct BrushingRight;
 
+/// An entity who experiences [`Gravity`].
+#[derive(Debug, Default, Clone, Copy, Component)]
+pub struct Gravitational;
+
 pub fn apply_gravity(
     gravity: Res<Gravity>,
-    mut object_query: Query<&mut Acceleration, Without<Grounded>>,
+    mut object_query: Query<&mut Acceleration, (With<Gravitational>, Without<Grounded>)>,
 ) {
     for mut acceleration in object_query.iter_mut() {
         acceleration.apply_force(gravity.0);

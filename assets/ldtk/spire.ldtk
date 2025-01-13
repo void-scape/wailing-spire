@@ -1027,7 +1027,7 @@
 		{
 			"identifier": "Dino",
 			"uid": 78,
-			"tags": [],
+			"tags": ["atlas"],
 			"exportToToc": false,
 			"allowOutOfBounds": false,
 			"doc": null,
@@ -1270,35 +1270,35 @@
 					"entityInstances": [
 						{
 							"__identifier": "Dino",
-							"__grid": [11,9],
+							"__grid": [6,2],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 79, "x": 0, "y": 0, "w": 24, "h": 24 },
 							"__smartColor": "#EAD4AA",
-							"iid": "c0855260-c210-11ef-842d-a999608c84f8",
+							"iid": "335ee1a0-c210-11ef-842d-e5e4a1636c41",
 							"width": 16,
 							"height": 16,
 							"defUid": 78,
-							"px": [176,144],
+							"px": [96,32],
 							"fieldInstances": [],
-							"__worldX": 176,
-							"__worldY": 144
+							"__worldX": 96,
+							"__worldY": 32
 						},
 						{
 							"__identifier": "Dino",
-							"__grid": [5,2],
+							"__grid": [13,8],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 79, "x": 0, "y": 0, "w": 24, "h": 24 },
 							"__smartColor": "#EAD4AA",
-							"iid": "c27cdca0-c210-11ef-842d-efe0c6663f0c",
+							"iid": "352dae30-c210-11ef-842d-6b1d534cb2a5",
 							"width": 16,
 							"height": 16,
 							"defUid": 78,
-							"px": [80,32],
+							"px": [208,128],
 							"fieldInstances": [],
-							"__worldX": 80,
-							"__worldY": 32
+							"__worldX": 208,
+							"__worldY": 128
 						},
 						{
 							"__identifier": "Knight",
@@ -1307,7 +1307,7 @@
 							"__tags": [ "atlas", "worldly" ],
 							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#BE4A2F",
-							"iid": "4ac244e0-c210-11ef-842d-8f84a682eeb9",
+							"iid": "3b72f240-c210-11ef-842d-8d0a752bbc57",
 							"width": 32,
 							"height": 32,
 							"defUid": 70,
@@ -1315,22 +1315,6 @@
 							"fieldInstances": [],
 							"__worldX": 288,
 							"__worldY": 32
-						},
-						{
-							"__identifier": "Dino",
-							"__grid": [15,1],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": { "tilesetUid": 79, "x": 0, "y": 0, "w": 24, "h": 24 },
-							"__smartColor": "#EAD4AA",
-							"iid": "6a44f6d0-c210-11ef-842d-e5a3d094190c",
-							"width": 16,
-							"height": 16,
-							"defUid": 78,
-							"px": [240,16],
-							"fieldInstances": [],
-							"__worldX": 240,
-							"__worldY": 16
 						}
 					]
 				},
@@ -2276,24 +2260,7 @@
 					"seed": 95152,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": [
-						{
-							"__identifier": "Dino",
-							"__grid": [4,2],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": { "tilesetUid": 79, "x": 0, "y": 0, "w": 24, "h": 24 },
-							"__smartColor": "#EAD4AA",
-							"iid": "66205360-c210-11ef-842d-99c11522bf27",
-							"width": 16,
-							"height": 16,
-							"defUid": 78,
-							"px": [64,32],
-							"fieldInstances": [],
-							"__worldX": 432,
-							"__worldY": 32
-						}
-					]
+					"entityInstances": []
 				},
 				{
 					"__identifier": "WallsComposite",
