@@ -7,6 +7,7 @@ use bevy::{
 };
 use bevy_ldtk_scene::{prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
+use map::MapGen;
 use physics::{
     gravity::Gravity,
     spatial::{SpatialHash, StaticBodyData},
@@ -16,14 +17,15 @@ use spire::*;
 mod animation;
 mod enemies;
 mod entity_registry;
+mod map;
 mod physics;
 mod player;
 mod spire;
-mod test;
 
 const WIDTH: f32 = 320.;
 const HEIGHT: f32 = 180.;
 const TILE_SIZE: f32 = 16.;
+const LEVEL_SIZE: Vec2 = Vec2::splat(20.);
 
 fn main() {
     App::default()
@@ -57,10 +59,14 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn startup(mut commands: Commands, server: Res<AssetServer>) {
+    let map = MapGen::<3, 5>::default().gen().trim_edge();
+    map::draw(&map);
+
     commands.spawn((
         HotWorld(server.load("ldtk/spire.ldtk")),
         World(server.load("ldtk/spire.ron")),
-        LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
+        // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
+        LevelLoader::levels_with_offset(map, Vec2::ZERO),
     ));
 }
 
