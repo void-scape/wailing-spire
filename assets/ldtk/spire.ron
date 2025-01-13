@@ -3,19 +3,23 @@
         scene_tiles: {
             (0): "ldtk/0.tiles.ron",
             (80): "ldtk/80.tiles.ron",
+            (82): "ldtk/82.tiles.ron",
         },
         scene_entities: {
             (0): "ldtk/0.entities.ron",
         },
         composites: {
-            ((0), (2)): "ldtk/Start_WallsComposite_composite.png",
+            ((82), (2)): "ldtk/Up_WallsComposite_composite.png",
             ((80), (37)): "ldtk/Right_BackgroundComposite_composite.png",
-            ((80), (2)): "ldtk/Right_WallsComposite_composite.png",
+            ((0), (2)): "ldtk/Start_WallsComposite_composite.png",
             ((0), (37)): "ldtk/Start_BackgroundComposite_composite.png",
+            ((80), (2)): "ldtk/Right_WallsComposite_composite.png",
+            ((82), (37)): "ldtk/Up_BackgroundComposite_composite.png",
         },
     ),
     levels: [
         (0),
         (80),
+        (82),
     ],
 )

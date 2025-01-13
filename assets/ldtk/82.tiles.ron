@@ -280,11 +280,6 @@
                 sprite: None,
             ),
             (
-                xy: (224.0, 208.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
                 xy: (320.0, 208.0),
                 index: 140,
                 sprite: None,
@@ -306,16 +301,6 @@
             ),
             (
                 xy: (80.0, 224.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 224.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
-                xy: (240.0, 224.0),
                 index: 140,
                 sprite: None,
             ),
@@ -350,16 +335,6 @@
                 sprite: None,
             ),
             (
-                xy: (192.0, 240.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
-                xy: (224.0, 240.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
                 xy: (352.0, 240.0),
                 index: 140,
                 sprite: None,
@@ -371,16 +346,6 @@
             ),
             (
                 xy: (48.0, 256.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 256.0),
-                index: 140,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 256.0),
                 index: 140,
                 sprite: None,
             ),
@@ -495,17 +460,12 @@
                 sprite: None,
             ),
             (
-                xy: (176.0, 240.0),
-                index: 142,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 240.0),
-                index: 142,
-                sprite: None,
-            ),
-            (
                 xy: (304.0, 240.0),
+                index: 142,
+                sprite: None,
+            ),
+            (
+                xy: (96.0, 256.0),
                 index: 142,
                 sprite: None,
             ),
@@ -660,48 +620,8 @@
                 sprite: None,
             ),
             (
-                xy: (208.0, 208.0),
-                index: 145,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 224.0),
-                index: 144,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 224.0),
-                index: 167,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 224.0),
-                index: 164,
-                sprite: None,
-            ),
-            (
                 xy: (64.0, 240.0),
                 index: 164,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 240.0),
-                index: 147,
-                sprite: None,
-            ),
-            (
-                xy: (128.0, 240.0),
-                index: 167,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 240.0),
-                index: 165,
-                sprite: None,
-            ),
-            (
-                xy: (160.0, 240.0),
-                index: 167,
                 sprite: None,
             ),
             (
@@ -737,16 +657,6 @@
             (
                 xy: (80.0, 256.0),
                 index: 168,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 256.0),
-                index: 145,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 256.0),
-                index: 144,
                 sprite: None,
             ),
             (
@@ -840,12 +750,12 @@
                 sprite: None,
             ),
             (
-                xy: (208.0, 192.0),
+                xy: (96.0, 224.0),
                 index: 161,
                 sprite: None,
             ),
             (
-                xy: (224.0, 192.0),
+                xy: (240.0, 224.0),
                 index: 161,
                 sprite: None,
             ),
@@ -1330,106 +1240,6 @@
                 sprite: None,
             ),
             (
-                xy: (96.0, 224.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (96.0, 240.0),
-                index: 28,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 224.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 240.0),
-                index: 29,
-                sprite: None,
-            ),
-            (
-                xy: (128.0, 224.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (128.0, 240.0),
-                index: 28,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 224.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 240.0),
-                index: 29,
-                sprite: None,
-            ),
-            (
-                xy: (160.0, 224.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (160.0, 240.0),
-                index: 28,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 224.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 240.0),
-                index: 29,
-                sprite: None,
-            ),
-            (
-                xy: (192.0, 224.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (192.0, 240.0),
-                index: 28,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 224.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 240.0),
-                index: 29,
-                sprite: None,
-            ),
-            (
-                xy: (224.0, 224.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (224.0, 240.0),
-                index: 28,
-                sprite: None,
-            ),
-            (
-                xy: (240.0, 224.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (240.0, 240.0),
-                index: 29,
-                sprite: None,
-            ),
-            (
                 xy: (256.0, 224.0),
                 index: 8,
                 sprite: None,
@@ -1510,32 +1320,12 @@
                 sprite: None,
             ),
             (
-                xy: (96.0, 256.0),
+                xy: (64.0, 256.0),
                 index: 8,
                 sprite: None,
             ),
             (
-                xy: (112.0, 256.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (160.0, 256.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 256.0),
-                index: 9,
-                sprite: None,
-            ),
-            (
-                xy: (224.0, 256.0),
-                index: 8,
-                sprite: None,
-            ),
-            (
-                xy: (240.0, 256.0),
+                xy: (80.0, 256.0),
                 index: 9,
                 sprite: None,
             ),
@@ -1971,66 +1761,6 @@
             ),
             (
                 xy: (48.0, 256.0),
-                index: 13,
-                sprite: None,
-            ),
-            (
-                xy: (64.0, 256.0),
-                index: 10,
-                sprite: None,
-            ),
-            (
-                xy: (80.0, 256.0),
-                index: 11,
-                sprite: None,
-            ),
-            (
-                xy: (96.0, 256.0),
-                index: 12,
-                sprite: None,
-            ),
-            (
-                xy: (112.0, 256.0),
-                index: 13,
-                sprite: None,
-            ),
-            (
-                xy: (128.0, 256.0),
-                index: 10,
-                sprite: None,
-            ),
-            (
-                xy: (144.0, 256.0),
-                index: 11,
-                sprite: None,
-            ),
-            (
-                xy: (160.0, 256.0),
-                index: 12,
-                sprite: None,
-            ),
-            (
-                xy: (176.0, 256.0),
-                index: 13,
-                sprite: None,
-            ),
-            (
-                xy: (192.0, 256.0),
-                index: 10,
-                sprite: None,
-            ),
-            (
-                xy: (208.0, 256.0),
-                index: 11,
-                sprite: None,
-            ),
-            (
-                xy: (224.0, 256.0),
-                index: 12,
-                sprite: None,
-            ),
-            (
-                xy: (240.0, 256.0),
                 index: 13,
                 sprite: None,
             ),

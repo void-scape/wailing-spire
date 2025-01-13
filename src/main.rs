@@ -60,7 +60,7 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
     commands.spawn((
         HotWorld(server.load("ldtk/spire.ldtk")),
         World(server.load("ldtk/spire.ron")),
-        LevelLoader::levels_with_offset((StartLevel, RightLevel), Vec2::ZERO),
+        LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
     ));
 }
 
