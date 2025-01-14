@@ -9,6 +9,8 @@ use bevy_ldtk_scene::extract::levels::LevelMeta;
 use bevy_ldtk_scene::levels::Level;
 use bevy_pixel_gfx::camera::MainCamera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
+use health::Health;
+use hook::Combo;
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
 };
@@ -19,6 +21,7 @@ use leafwing_input_manager::{
 };
 use std::hash::Hash;
 
+mod health;
 mod hook;
 
 pub use hook::HookTarget;
@@ -28,7 +31,9 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_required_components::<crate::spire::Knight, Player>()
+            .add_event::<hook::HookKill>()
             .init_resource::<hook::ViableTargets>()
+            .insert_resource(hook::ShowHook::default())
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
@@ -43,12 +48,19 @@ impl Plugin for PlayerPlugin {
                         hook::move_hook,
                         hook::terminal_velocity,
                         hook::collision_hook,
-                    ),
+                        hook::combo,
+                    )
+                        .chain(),
+                    health::death,
+                    hook::show_hook,
                 ),
             )
             .add_systems(
                 PostUpdate,
-                move_camera.before(TransformSystem::TransformPropagate),
+                (
+                    hook::despawn_hook_kills,
+                    move_camera.before(TransformSystem::TransformPropagate),
+                ),
             );
     }
 }
@@ -77,6 +89,8 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(BrushingMove)]
 #[require(layers::CollidesWith<layers::Wall>)]
 #[require(layers::Player)]
+#[require(Combo)]
+#[require(Health(|| Health::PLAYER))]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -341,9 +355,6 @@ fn update(
                         commands.entity(entity).insert(Jumping);
                         velocity.0.x -= WALL_IMPULSE;
                     }
-                }
-                Action::Interact => {
-                    info!("interacted");
                 }
                 _ => {}
             }

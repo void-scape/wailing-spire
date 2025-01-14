@@ -12,7 +12,7 @@ rand = "0.8.5"
 
 [dependencies.bevy]
 version = "0.15"
-features = ["dynamic_linking", "file_watcher"]
+features = ["dynamic_linking", "file_watcher", "wav"]
 
 [build-dependencies]
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
@@ -29,8 +29,8 @@ opt-level = 3
 # [profile.dev.package."bevy_pretty_text"]
 # opt-level = 0
 
-[profile.dev.package."bevy_ldtk_scene"]
-opt-level = 0
+# [profile.dev.package."bevy_ldtk_scene"]
+# opt-level = 0
 
 [profile.dev.package."bevy_pixel_gfx"]
 opt-level = 0
