@@ -68,6 +68,17 @@ impl<D: Clone> SpatialHash<D> {
         }
     }
 
+    pub fn remove(&mut self, collider: AbsoluteCollider) {
+        let (min_x, min_y) = self.hash(&Vec2::new(collider.min_x(), collider.min_y()));
+        let (max_x, max_y) = self.hash(&Vec2::new(collider.max_x(), collider.max_y()));
+
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                let _ = self.objects.remove(&(x, y));
+            }
+        }
+    }
+
     pub fn clear(&mut self) {
         self.objects.clear();
     }

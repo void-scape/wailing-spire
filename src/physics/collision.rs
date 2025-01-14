@@ -6,6 +6,7 @@ use super::{
 use crate::spire::TileSolid;
 use crate::TILE_SIZE;
 use bevy::{
+    ecs::{component::ComponentId, world::DeferredWorld},
     prelude::*,
     utils::hashbrown::{HashMap, HashSet},
 };
@@ -23,7 +24,23 @@ pub struct Collision;
 /// Moving a static body entity will NOT result in their collision being updated.
 #[derive(Debug, Default, Clone, Copy, Component)]
 #[require(Collider)]
+#[component(on_remove = remove_static_body)]
 pub struct StaticBody;
+
+fn remove_static_body(mut world: DeferredWorld, entity: Entity, _: ComponentId) {
+    if let Some(parent) = world.get::<Parent>(entity) {
+        let Some(global_t) = world.get::<GlobalTransform>(entity) else {
+            return;
+        };
+        let collider = world.get::<Collider>(entity).unwrap();
+        let collider = collider.global_absolute(global_t);
+
+        if let Some(mut hash) = world.get_mut::<SpatialHash<StaticBodyData>>(parent.get()) {
+            hash.remove(collider);
+        }
+    }
+    // SpatialHash<StaticBodyData>
+}
 
 #[derive(Debug, Default, Clone, Copy, Component)]
 #[require(Collider)]
@@ -90,6 +107,13 @@ pub enum AbsoluteCollider {
 }
 
 impl AbsoluteCollider {
+    pub fn expand(&self, factor: f32) -> Self {
+        match self {
+            Self::Rect(rect) => Self::Rect(rect.expand(factor)),
+            Self::Circle(circle) => Self::Circle(circle.expand(factor)),
+        }
+    }
+
     pub fn position(&self) -> Vec2 {
         match self {
             Self::Rect(rect) => rect.tl,
@@ -165,6 +189,14 @@ pub struct RectCollider {
 }
 
 impl RectCollider {
+    pub fn expand(mut self, factor: f32) -> Self {
+        let center = self.center();
+        self.size *= factor;
+        let new_center = self.center();
+        self.tl += center - new_center;
+        self
+    }
+
     pub fn br(&self) -> Vec2 {
         Vec2::new(self.tl.x + self.size.x, self.tl.y - self.size.y)
     }
@@ -220,6 +252,13 @@ impl CollidesWith<Self> for RectCollider {
 pub struct CircleCollider {
     pub position: Vec2,
     pub radius: f32,
+}
+
+impl CircleCollider {
+    pub fn expand(mut self, factor: f32) -> Self {
+        self.radius *= factor;
+        self
+    }
 }
 
 impl CollidesWith<Self> for CircleCollider {

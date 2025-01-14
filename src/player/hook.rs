@@ -1,9 +1,10 @@
 use super::{Action, Collider, CollidesWith, Player, Velocity};
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::Anchor};
 use leafwing_input_manager::prelude::*;
 
 const TARGET_THRESHOLD: f32 = 1024.0;
 const REEL_SPEED: f32 = 30.;
+const TERMINAL_VELOCITY2_THRESHOLD: f32 = 60_000.;
 
 #[derive(Component)]
 pub struct Hook {
@@ -18,6 +19,13 @@ pub struct HookTarget;
 
 #[derive(Resource, Debug, Default)]
 pub struct ViableTargets(Vec<Entity>);
+
+#[derive(Component)]
+pub struct SelectedTarget(Entity);
+
+/// Player is moving fast enough to _kill_ enemies.
+#[derive(Component)]
+pub struct TerminalVelocity;
 
 pub(super) fn spawn_hook(server: Res<AssetServer>, mut commands: Commands) {
     let mut chains = Vec::new();
@@ -71,7 +79,16 @@ pub(super) fn move_hook(
     mut hook: Query<(&mut Transform, &Hook), (Without<Chain>, Without<Player>)>,
     mut chains: Query<&mut Transform, (With<Chain>, Without<Player>)>,
     targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
-    mut player: Query<(&ActionState<Action>, &Transform, &Collider, &mut Velocity), With<Player>>,
+    mut player: Query<
+        (
+            Entity,
+            &ActionState<Action>,
+            &GlobalTransform,
+            &Collider,
+            &mut Velocity,
+        ),
+        With<Player>,
+    >,
     viable: Res<ViableTargets>,
     mut commands: Commands,
 ) {
@@ -84,7 +101,9 @@ pub(super) fn move_hook(
     let Ok((targ_entity, target, target_collider)) = targets.get(*closest) else {
         return;
     };
-    let Ok((action, player, player_collider, mut player_velocity)) = player.get_single_mut() else {
+    let Ok((player_entity, action, player, player_collider, mut player_velocity)) =
+        player.get_single_mut()
+    else {
         return;
     };
 
@@ -94,7 +113,7 @@ pub(super) fn move_hook(
     hook_transform.translation.x = abs_target.center().x;
     hook_transform.translation.y = abs_target.center().y;
 
-    let abs_player = player_collider.absolute(player);
+    let abs_player = player_collider.global_absolute(player);
 
     let vector = abs_target.center() - abs_player.center();
     let segments = vector / hook.chains.len() as f32;
@@ -108,12 +127,68 @@ pub(super) fn move_hook(
     }
 
     let unit = vector.normalize_or_zero() * REEL_SPEED;
-
     if action.pressed(&Action::Interact) {
         player_velocity.0 += unit;
+        commands
+            .entity(player_entity)
+            .insert(SelectedTarget(targ_entity));
+    } else {
+        commands.entity(player_entity).remove::<SelectedTarget>();
+    }
+}
 
-        if abs_player.collides_with(&abs_target) {
-            commands.entity(targ_entity).despawn_recursive();
+pub(super) fn terminal_velocity(
+    mut commands: Commands,
+    player: Option<Single<(Entity, &Velocity), With<Player>>>,
+    server: Res<AssetServer>,
+    mut shielded: Local<Option<Entity>>,
+) {
+    if let Some((entity, vel)) = player.map(|p| p.into_inner()) {
+        if vel.0.length_squared() >= TERMINAL_VELOCITY2_THRESHOLD {
+            if shielded.is_none() {
+                let shield = commands
+                    .spawn(Sprite {
+                        image: server.load("sprites/shield.png"),
+                        anchor: Anchor::TopLeft,
+                        ..Default::default()
+                    })
+                    .id();
+                commands
+                    .entity(entity)
+                    .insert(TerminalVelocity)
+                    .add_child(shield);
+                *shielded = Some(shield);
+            }
+        } else if let Some(shield) = *shielded {
+            commands.entity(entity).remove::<TerminalVelocity>();
+            commands.entity(shield).despawn();
+            *shielded = None;
         }
+    }
+}
+
+pub(super) fn collision_hook(
+    mut commands: Commands,
+    targets: Query<(Entity, &GlobalTransform, &Collider)>,
+    mut player: Query<
+        (Entity, &GlobalTransform, &Collider, &SelectedTarget),
+        (With<Player>, With<TerminalVelocity>),
+    >,
+) {
+    let Ok((player_entity, player, player_collider, selected_target)) = player.get_single_mut()
+    else {
+        return;
+    };
+
+    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.0) else {
+        return;
+    };
+
+    let abs_target = target_collider.global_absolute(target);
+    let abs_player = player_collider.global_absolute(player);
+
+    if abs_player.expand(2.).collides_with(&abs_target) {
+        commands.entity(targ_entity).despawn_recursive();
+        commands.entity(player_entity).remove::<SelectedTarget>();
     }
 }

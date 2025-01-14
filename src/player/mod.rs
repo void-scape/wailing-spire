@@ -38,7 +38,12 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     (manage_brushing_move, update, jump, update_current_level).chain(),
-                    (hook::gather_viable_targets, hook::move_hook),
+                    (
+                        hook::gather_viable_targets,
+                        hook::move_hook,
+                        hook::terminal_velocity,
+                        hook::collision_hook,
+                    ),
                 ),
             )
             .add_systems(
