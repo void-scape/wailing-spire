@@ -187,8 +187,8 @@ fn move_camera(
         .find(|(_, l)| l.uid() == level.0.uid)
         .map(|(t, _)| t)
     {
-        // let x = level.0.size.x / 2. + level_transform.translation().x;
-        let x = player.translation().x;
+        let x = level.0.size.x / 2. + level_transform.translation().x;
+        // let x = player.translation().x;
         let target_position = Vec3::new(x, player.translation().y + TILE_SIZE * 1.5, 0.);
         let delta = target_position - cam.translation;
 

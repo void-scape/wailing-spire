@@ -5,7 +5,7 @@ use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
-use bevy_ldtk_scene::{prelude::*, process::tiles::LevelTileSets};
+use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
 use physics::{
@@ -66,7 +66,13 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
         HotWorld(server.load("ldtk/spire.ldtk")),
         World(server.load("ldtk/spire.ron")),
         // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
-        LevelLoader::levels_with_offset(map, Vec2::ZERO),
+        // LevelLoader::levels_with_offset(map, Vec2::ZERO),
+        LevelLoader::levels(Stack((
+            SpireStartLevel,
+            Spire1Level,
+            Spire2Level,
+            SpireEndLevel,
+        ))),
     ));
 }
 
