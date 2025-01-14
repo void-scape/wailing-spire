@@ -56,7 +56,6 @@ impl Collider {
         Self::Circle(CircleCollider { position, radius })
     }
 
-    // TODO: make this work in bevy
     pub fn absolute(&self, transform: &Transform) -> AbsoluteCollider {
         match self {
             Self::Rect(rect) => AbsoluteCollider::Rect(RectCollider {
@@ -65,6 +64,19 @@ impl Collider {
             }),
             Self::Circle(circle) => AbsoluteCollider::Circle(CircleCollider {
                 position: circle.position + transform.translation.xy(),
+                radius: circle.radius,
+            }),
+        }
+    }
+
+    pub fn global_absolute(&self, transform: &GlobalTransform) -> AbsoluteCollider {
+        match self {
+            Self::Rect(rect) => AbsoluteCollider::Rect(RectCollider {
+                tl: rect.tl + transform.translation().xy(),
+                size: rect.size,
+            }),
+            Self::Circle(circle) => AbsoluteCollider::Circle(CircleCollider {
+                position: circle.position + transform.translation().xy(),
                 radius: circle.radius,
             }),
         }
@@ -334,16 +346,26 @@ pub fn handle_collisions<T: Component>(
     mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
     mut dynamic_bodies: Query<
-        (Entity, &mut Transform, &Collider, &mut Velocity),
+        (
+            Entity,
+            &mut GlobalTransform,
+            &mut Transform,
+            &Collider,
+            &mut Velocity,
+        ),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
 ) {
-    for (entity, mut transform, collider, mut velocity) in dynamic_bodies.iter_mut() {
+    for (entity, mut global_transform, mut transform, collider, mut velocity) in
+        dynamic_bodies.iter_mut()
+    {
         let mut collision = false;
 
+        let original_collider = &collider;
+        let mut global_t = global_transform.compute_transform();
+        let mut collider = collider.absolute(&global_t);
+
         for map in map_query.iter() {
-            let original_collider = &collider;
-            let mut collider = collider.absolute(&transform);
             let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
 
             colliders.sort_by(|d1, d2| {
@@ -356,16 +378,20 @@ pub fn handle_collisions<T: Component>(
             for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
                 if collider.collides_with(sc) {
                     collision = true;
-                    let res_v = collider.resolution(sc);
-                    transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
-                    collider = original_collider.absolute(&transform);
+                    let res = collider.resolution(sc).extend(0.);
+                    transform.translation += res;
+                    global_t.translation += res;
+                    collider = original_collider.absolute(&global_t);
 
-                    if res_v.y.abs() > 0. {
+                    if res.y.abs() > 0. {
                         velocity.0.y = 0.;
                     }
                 }
             }
         }
+
+        // update global transform here so changes are observable in remaining collision systems.
+        *global_transform = GlobalTransform::from(global_t);
 
         if collision {
             commands.entity(entity).insert(Collision);
@@ -379,15 +405,15 @@ pub fn update_grounded<T: Component>(
     mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
     mut dynamic_bodies: Query<
-        (Entity, &Transform, &Collider, &Velocity),
+        (Entity, &GlobalTransform, &Collider, &Velocity),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
 ) {
-    for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
+    for (entity, global_transform, collider, velocity) in dynamic_bodies.iter_mut() {
         let mut grounded = false;
 
         for map in map_query.iter() {
-            let collider = collider.absolute(transform);
+            let collider = collider.global_absolute(global_transform);
             let nearby_colliders = map.nearby_objects(&collider.position());
 
             for spatial::SpatialData {
@@ -428,16 +454,16 @@ pub fn update_brushing<T: Component>(
     mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
     mut dynamic_bodies: Query<
-        (Entity, &Transform, &Collider, &Velocity),
+        (Entity, &GlobalTransform, &Collider, &Velocity),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
 ) {
-    for (entity, transform, collider, velocity) in dynamic_bodies.iter_mut() {
+    for (entity, global_transform, collider, velocity) in dynamic_bodies.iter_mut() {
         let mut left = false;
         let mut right = false;
 
         for map in map_query.iter() {
-            let collider = collider.absolute(transform);
+            let collider = collider.global_absolute(global_transform);
             let nearby_colliders = map.nearby_objects(&collider.position());
 
             for spatial::SpatialData {

@@ -40,8 +40,8 @@ pub fn register_trigger_layers(
 }
 
 pub fn handle_triggers(
-    triggers: Query<(Entity, &Transform, &Trigger, &TriggerLayer)>,
-    dynamic_bodies: Query<(Entity, &Transform, &Collider, &TriggerLayer)>,
+    triggers: Query<(Entity, &GlobalTransform, &Trigger, &TriggerLayer)>,
+    dynamic_bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggerLayer)>,
     layer_registry: Res<TriggerLayerRegistry>,
     mut writer: EventWriter<TriggerEvent>,
 ) {
@@ -62,7 +62,7 @@ pub fn handle_triggers(
         );
 
         for (entity, transform, trigger, _) in layer_triggers.iter() {
-            let collider = trigger.0.absolute(transform);
+            let collider = trigger.0.global_absolute(transform);
 
             for SpatialData {
                 entity: e,
@@ -89,7 +89,7 @@ pub fn handle_triggers(
         );
 
         for (entity, transform, trigger, _) in layer_triggers.iter() {
-            let collider = trigger.0.absolute(transform);
+            let collider = trigger.0.global_absolute(transform);
 
             for SpatialData {
                 entity: e,

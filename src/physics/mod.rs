@@ -56,19 +56,16 @@ impl Plugin for PhysicsPlugin {
                     (gravity::apply_gravity, velocity::apply_velocity)
                         .chain()
                         .in_set(PhysicsSystems::Velocity),
-                    spatial::store_static_body_in_spatial_map
-                        .after(PhysicsSystems::Velocity)
-                        .before(PhysicsSystems::Collision),
+                    (
+                        bevy::transform::systems::sync_simple_transforms,
+                        bevy::transform::systems::propagate_transforms,
+                        spatial::store_static_body_in_spatial_map,
+                    )
+                        .chain()
+                        .before(PhysicsSystems::Collision)
+                        .after(PhysicsSystems::Velocity),
                     (
                         (trigger::register_trigger_layers, trigger::handle_triggers),
-                        // (
-                        //     spatial::store_static_body_in_spatial_map,
-                        //     collision::handle_collisions,
-                        //     collision::handle_dynamic_body_collsions,
-                        //     collision::update_grounded,
-                        //     collision::update_brushing,
-                        // )
-                        //     .chain(),
                         debug::debug_display_collider_wireframe,
                         debug::update_show_collision,
                         (

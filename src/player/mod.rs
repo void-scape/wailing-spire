@@ -48,6 +48,8 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+const CAMERA_SPEED: f32 = 0.1;
+
 const MAX_VEL: f32 = 300.;
 const MAX_X_VEL: f32 = 100.;
 const WALL_IMPULSE: f32 = 400.;
@@ -57,8 +59,8 @@ const SLIDE_SPEED: f32 = 20.;
 const WALL_STICK_TIME: f32 = 0.20;
 
 const JUMP_SPEED: f32 = 200.;
-// const JUMP_MAX_DURATION: f32 = 0.2;
-const JUMP_MAX_DURATION: f32 = 200.;
+const JUMP_MAX_DURATION: f32 = 0.2;
+// const JUMP_MAX_DURATION: f32 = 200.;
 
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
@@ -192,7 +194,7 @@ fn move_camera(
         let target_position = Vec3::new(x, player.translation().y + TILE_SIZE * 1.5, 0.);
         let delta = target_position - cam.translation;
 
-        cam.translation += delta * 0.05;
+        cam.translation += delta * CAMERA_SPEED;
     }
 }
 

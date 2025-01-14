@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 use core::marker::PhantomData;
 
-use super::spatial::{SpatialHash, StaticBodyData};
-
 /// A marker component that can be placed on dynamic bodies
 /// to enable collisions between the dynamic body and the
 /// target static or dynamic bodies.

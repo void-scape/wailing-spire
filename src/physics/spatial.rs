@@ -13,12 +13,12 @@ pub struct SpatialData<D> {
 impl<D> SpatialData<D> {
     pub fn from_entity(
         entity: Entity,
-        transform: &Transform,
+        transform: &GlobalTransform,
         collider: &Collider,
         data: D,
     ) -> Self {
         Self {
-            collider: collider.absolute(transform),
+            collider: collider.global_absolute(transform),
             entity,
             data,
         }
@@ -127,9 +127,10 @@ pub fn store_static_body_in_spatial_map(
 ) {
     for (mut map, children) in hash.iter_mut() {
         for child in children.iter() {
-            if let Ok((entity, transform, collider, trigger_layer)) = static_body.get(*child) {
+            if let Ok((entity, global_transform, collider, trigger_layer)) = static_body.get(*child)
+            {
                 map.insert(SpatialData {
-                    collider: collider.absolute(&transform.compute_transform()),
+                    collider: collider.global_absolute(global_transform),
                     data: trigger_layer.cloned(),
                     entity,
                 })

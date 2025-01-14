@@ -1,8 +1,9 @@
 use super::{Action, Collider, CollidesWith, Player, Velocity};
-use bevy::{math::NormedVectorSpace, prelude::*};
+use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 const TARGET_THRESHOLD: f32 = 1024.0;
+const REEL_SPEED: f32 = 30.;
 
 #[derive(Component)]
 pub struct Hook {
@@ -106,7 +107,7 @@ pub(super) fn move_hook(
         chain.translation = (abs_player.center() + segments * i as f32).extend(10.);
     }
 
-    let unit = vector.normalize_or_zero() * 30.;
+    let unit = vector.normalize_or_zero() * REEL_SPEED;
 
     if action.pressed(&Action::Interact) {
         player_velocity.0 += unit;
