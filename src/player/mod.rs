@@ -42,7 +42,13 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
-                    (manage_brushing_move, update, jump, update_current_level).chain(),
+                    (
+                        manage_brushing_move,
+                        (update, homing_movement),
+                        jump,
+                        update_current_level,
+                    )
+                        .chain(),
                     (
                         hook::gather_viable_targets,
                         hook::move_hook,
@@ -70,8 +76,9 @@ const CAMERA_SPEED: f32 = 0.1;
 const MAX_VEL: f32 = 300.;
 const MAX_X_VEL: f32 = 100.;
 const WALL_IMPULSE: f32 = 400.;
+const WALK_SPEED: f32 = 130.;
 const AIR_ACCEL: f32 = 0.08;
-const AIR_DAMPING: f32 = 0.08;
+const AIR_DAMPING: f32 = 0.04;
 const SLIDE_SPEED: f32 = 20.;
 const WALL_STICK_TIME: f32 = 0.20;
 
@@ -223,6 +230,51 @@ struct Jumping;
 #[derive(Component, Default, Debug)]
 struct BrushingMove(Stopwatch);
 
+/// The player is homing in on a hooked target.
+#[derive(Component)]
+struct Homing {
+    target: Entity,
+    starting_velocity: Vec2,
+}
+
+fn homing_movement(
+    mut player: Query<
+        (
+            Entity,
+            &mut Homing,
+            &GlobalTransform,
+            &Collider,
+            &mut Velocity,
+        ),
+        With<Player>,
+    >,
+    target: Query<(&GlobalTransform, &Collider, Option<&Velocity>), Without<Player>>,
+) {
+    let Ok((player, mut homing, player_trans, player_collider, mut player_vel)) =
+        player.get_single_mut()
+    else {
+        return;
+    };
+
+    let Ok((target_trans, target_collider, target_vel)) = target.get(homing.target) else {
+        warn!("A homing target is missing one or more components");
+        return;
+    };
+
+    let target = target_trans.compute_transform();
+    let abs_target = target_collider.absolute(&target);
+
+    let abs_player = player_collider.global_absolute(player_trans);
+
+    let vector = abs_target.center() - abs_player.center();
+    let vector = vector.normalize_or_zero() * 500.;
+
+    // we have some velocity damping
+    homing.starting_velocity *= 0.95;
+
+    player_vel.0 = vector + target_vel.map(|t| t.0).unwrap_or_default() + homing.starting_velocity;
+}
+
 fn manage_brushing_move(
     player: Option<
         Single<
@@ -272,7 +324,7 @@ fn update(
                 Option<&BrushingLeft>,
                 Option<&BrushingRight>,
             ),
-            With<Player>,
+            (With<Player>, Without<Homing>),
         >,
     >,
     mut set_idle: Local<bool>,
@@ -298,22 +350,22 @@ fn update(
             let dir = Direction::from_vec(axis_pair);
 
             if grounded.is_some() {
-                velocity.0.x = dir.into_unit_vec2().x * 100.;
+                velocity.0.x = dir.into_unit_vec2().x * WALK_SPEED;
             } else {
                 if !((brushing_left.is_some() || brushing_right.is_some())
                     && brushing_move.0.elapsed_secs() <= WALL_STICK_TIME)
                 {
                     match dir {
                         Direction::Right => {
-                            if velocity.0.x < MAX_X_VEL {
+                            if velocity.0.x < WALK_SPEED {
                                 velocity.0.x =
-                                    (velocity.0.x + AIR_ACCEL * MAX_X_VEL).min(MAX_X_VEL);
+                                    (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
                             }
                         }
                         Direction::Left => {
-                            if velocity.0.x > -MAX_X_VEL {
+                            if velocity.0.x > -WALK_SPEED {
                                 velocity.0.x =
-                                    (velocity.0.x - AIR_ACCEL * MAX_X_VEL).max(-MAX_X_VEL);
+                                    (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
                             }
                         }
                     }

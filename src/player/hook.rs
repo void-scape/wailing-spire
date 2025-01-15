@@ -54,8 +54,8 @@ pub struct HookTarget;
 #[derive(Resource, Debug, Default)]
 pub struct ViableTargets(Vec<Entity>);
 
-#[derive(Component)]
-pub struct SelectedTarget(Entity);
+// #[derive(Component)]
+// pub struct SelectedTarget(Entity);
 
 /// Player is moving fast enough to _kill_ enemies.
 #[derive(Component)]
@@ -121,6 +121,7 @@ pub(super) fn move_hook(
             &GlobalTransform,
             &Collider,
             &mut Velocity,
+            Option<&super::Homing>,
         ),
         With<Player>,
     >,
@@ -139,7 +140,7 @@ pub(super) fn move_hook(
         *hook_visibility = Visibility::Hidden;
         return;
     };
-    let Ok((player_entity, action, player, player_collider, mut player_velocity)) =
+    let Ok((player_entity, action, player, player_collider, mut player_velocity, homing)) =
         player.get_single_mut()
     else {
         *hook_visibility = Visibility::Hidden;
@@ -175,15 +176,20 @@ pub(super) fn move_hook(
         chain.translation = (abs_player.center() + segments * i as f32).extend(10.);
     }
 
-    let unit = vector.normalize_or_zero() * REEL_SPEED;
-    if action.pressed(&Action::Interact) {
-        player_velocity.0 += unit;
-        commands
-            .entity(player_entity)
-            .insert(SelectedTarget(targ_entity));
-    } else {
-        commands.entity(player_entity).remove::<SelectedTarget>();
+    if action.just_pressed(&Action::Interact) && homing.is_none() {
+        commands.entity(player_entity).insert(super::Homing {
+            target: targ_entity,
+            starting_velocity: player_velocity.0,
+        });
     }
+
+    // if action.pressed(&Action::Interact) {
+    //     commands
+    //         .entity(player_entity)
+    //         .insert(SelectedTarget(targ_entity));
+    // } else {
+    //     commands.entity(player_entity).remove::<SelectedTarget>();
+    // }
 }
 
 pub(super) fn terminal_velocity(
@@ -227,7 +233,7 @@ pub(super) fn collision_hook(
             Entity,
             &GlobalTransform,
             &Collider,
-            &SelectedTarget,
+            &super::Homing,
             Option<&TerminalVelocity>,
             &mut Health,
         ),
@@ -247,7 +253,7 @@ pub(super) fn collision_hook(
         return;
     };
 
-    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.0) else {
+    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.target) else {
         return;
     };
 
@@ -257,7 +263,7 @@ pub(super) fn collision_hook(
     // defer despawn until post_update
     if abs_player.expand(2.).collides_with(&abs_target) {
         if terminal_velocity.is_some() {
-            commands.entity(player_entity).remove::<SelectedTarget>();
+            commands.entity(player_entity).remove::<super::Homing>();
             writer.send(HookKill(targ_entity));
         } else {
             // TODO: trigger collision for health + trigger must leave before you get hit again +
