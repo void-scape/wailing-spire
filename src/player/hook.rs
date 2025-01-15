@@ -2,15 +2,17 @@ use crate::animation::AnimationController;
 
 use super::{
     health::{Dead, Health},
-    Action, Collider, CollidesWith, Grounded, Player, PlayerAnimation, Velocity,
+    Action, BrushingLeft, BrushingMove, BrushingRight, Collider, CollidesWith, Grounded, Player,
+    PlayerAnimation, Velocity,
 };
 use bevy::{prelude::*, sprite::Anchor};
+use bevy_pixel_gfx::screen_shake;
 use leafwing_input_manager::prelude::*;
 
 const TARGET_THRESHOLD: f32 = 1024.0;
 const REEL_SPEED: f32 = 30.;
 const TERMINAL_VELOCITY2_THRESHOLD: f32 = 60_000.;
-const COMBO_PITCH_FACTOR: f32 = 0.2;
+const COMBO_PITCH_FACTOR: f32 = 0.1;
 
 #[derive(Debug, Resource)]
 pub(super) struct ShowHook(Visibility);
@@ -245,6 +247,7 @@ pub(super) fn collision_hook(
         (With<Player>, Without<Dead>),
     >,
     mut writer: EventWriter<HookKill>,
+    mut screen_shake: ResMut<screen_shake::ScreenShake>,
 ) {
     let Ok((
         player_entity,
@@ -271,6 +274,12 @@ pub(super) fn collision_hook(
         if terminal_velocity.is_some() {
             commands.entity(player_entity).remove::<super::Homing>();
             writer.send(HookKill(targ_entity));
+
+            screen_shake
+                .max_offset(75.)
+                .camera_decay(0.9)
+                .trauma_decay(1.2)
+                .shake();
         } else {
             // TODO: trigger collision for health + trigger must leave before you get hit again +
             // kickback
@@ -294,13 +303,18 @@ pub(super) fn combo(
     mut commands: Commands,
     server: Res<AssetServer>,
     mut reader: EventReader<HookKill>,
-    mut player: Query<(&mut Combo, Option<&Grounded>)>,
+    mut player: Query<(
+        &mut Combo,
+        Option<&Grounded>,
+        Option<&BrushingLeft>,
+        Option<&BrushingRight>,
+    )>,
 ) {
-    let Ok((mut combo, grounded)) = player.get_single_mut() else {
+    let Ok((mut combo, grounded, brushing_left, brushing_right)) = player.get_single_mut() else {
         return;
     };
 
-    if grounded.is_some() {
+    if grounded.is_some() || brushing_left.is_some() || brushing_right.is_some() {
         combo.0 = 0;
     }
 
