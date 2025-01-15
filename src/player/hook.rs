@@ -1,6 +1,8 @@
+use crate::animation::AnimationController;
+
 use super::{
     health::{Dead, Health},
-    Action, Collider, CollidesWith, Grounded, Player, Velocity,
+    Action, Collider, CollidesWith, Grounded, Player, PlayerAnimation, Velocity,
 };
 use bevy::{prelude::*, sprite::Anchor};
 use leafwing_input_manager::prelude::*;
@@ -32,8 +34,9 @@ impl ShowHook {
 pub(super) fn show_hook(
     mut show: ResMut<ShowHook>,
     player: Query<Entity, (With<Player>, Without<Dead>)>,
+    viable: Res<ViableTargets>,
 ) {
-    if !player.is_empty() {
+    if !player.is_empty() && !viable.0.is_empty() {
         show.show();
     } else {
         show.hide();
@@ -85,6 +88,8 @@ pub(super) fn gather_viable_targets(
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
 ) {
+    viable.0.clear();
+
     let Ok(player) = player.get_single() else {
         return;
     };
@@ -105,7 +110,6 @@ pub(super) fn gather_viable_targets(
 
     targets.sort_unstable_by(|a, b| a.2.total_cmp(&b.2));
 
-    viable.0.clear();
     viable.0.extend(targets.drain(..).map(|t| t.0));
 }
 
@@ -114,13 +118,13 @@ pub(super) fn move_hook(
     mut hook: Query<(&mut Visibility, &mut Transform, &Hook), (Without<Chain>, Without<Player>)>,
     mut chains: Query<&mut Transform, (With<Chain>, Without<Player>)>,
     targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
-    mut player: Query<
+    player: Query<
         (
             Entity,
             &ActionState<Action>,
             &GlobalTransform,
             &Collider,
-            &mut Velocity,
+            &Velocity,
             Option<&super::Homing>,
         ),
         With<Player>,
@@ -140,8 +144,8 @@ pub(super) fn move_hook(
         *hook_visibility = Visibility::Hidden;
         return;
     };
-    let Ok((player_entity, action, player, player_collider, mut player_velocity, homing)) =
-        player.get_single_mut()
+    let Ok((player_entity, action, player, player_collider, player_velocity, homing)) =
+        player.get_single()
     else {
         *hook_visibility = Visibility::Hidden;
         return;
@@ -236,8 +240,9 @@ pub(super) fn collision_hook(
             &super::Homing,
             Option<&TerminalVelocity>,
             &mut Health,
+            &mut AnimationController<PlayerAnimation>,
         ),
-        With<Player>,
+        (With<Player>, Without<Dead>),
     >,
     mut writer: EventWriter<HookKill>,
 ) {
@@ -248,6 +253,7 @@ pub(super) fn collision_hook(
         selected_target,
         terminal_velocity,
         mut health,
+        mut animations,
     )) = player.get_single_mut()
     else {
         return;
@@ -269,6 +275,7 @@ pub(super) fn collision_hook(
             // TODO: trigger collision for health + trigger must leave before you get hit again +
             // kickback
             health.damage(1);
+            animations.set_animation_one_shot(PlayerAnimation::Hit);
             println!("Ouch! [{}/{}]", health.current(), health.max());
         }
     }

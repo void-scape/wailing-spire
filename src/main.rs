@@ -44,10 +44,19 @@ fn main() {
             SpatialHash::<StaticBodyData>::new(32.)
         })
         .insert_resource(Gravity(Vec2::NEG_Y * 12.))
+        .insert_resource(ClearColor(srgb_from_hex(0x0d001a)))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
         .add_systems(Update, despawn)
         .run();
+}
+
+pub fn srgb_from_hex(color: u32) -> Color {
+    Color::srgb_u8(
+        ((color >> 16) & 0xff) as u8,
+        ((color >> 8) & 0xff) as u8,
+        (color & 0xff) as u8,
+    )
 }
 
 fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWriter<AppExit>) {

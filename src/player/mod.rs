@@ -106,6 +106,8 @@ fn animation_controller() -> AnimationController<PlayerAnimation> {
         [
             (PlayerAnimation::Idle, (0, 4)),
             (PlayerAnimation::Run, (16, 32)),
+            (PlayerAnimation::Hit, (48, 52)),
+            (PlayerAnimation::Death, (56, 60)),
         ],
     )
 }
@@ -132,6 +134,8 @@ fn collider() -> Collider {
 enum PlayerAnimation {
     Run,
     Idle,
+    Hit,
+    Death,
 }
 
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]

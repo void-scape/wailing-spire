@@ -27,6 +27,7 @@ impl<T> Animation for T where T: Clone + Hash + PartialEq + Eq + Send + Sync + '
 pub struct AnimationController<A> {
     index_map: HashMap<A, (usize, usize)>,
     active_index: Option<(A, (usize, usize), usize)>,
+    one_shot: bool,
     timer: Timer,
 }
 
@@ -35,6 +36,7 @@ impl<A> Default for AnimationController<A> {
         Self {
             index_map: HashMap::default(),
             active_index: None,
+            one_shot: false,
             timer: Timer::new(Duration::from_secs_f32(1.0 / 2.0), TimerMode::Repeating),
         }
     }
@@ -51,6 +53,7 @@ impl<A: Animation> AnimationController<A> {
         Self {
             index_map,
             active_index: None,
+            one_shot: false,
             timer: Timer::new(Duration::from_secs_f32(1.0 / speed), TimerMode::Repeating),
         }
     }
@@ -72,6 +75,15 @@ impl<A: Animation> AnimationController<A> {
     pub fn set_animation(&mut self, animation: A) {
         if let Some(range) = self.get_range(&animation) {
             self.active_index = Some((animation.clone(), range, range.0));
+            self.one_shot = false;
+            self.timer.reset();
+        }
+    }
+
+    pub fn set_animation_one_shot(&mut self, animation: A) {
+        if let Some(range) = self.get_range(&animation) {
+            self.active_index = Some((animation.clone(), range, range.0));
+            self.one_shot = true;
             self.timer.reset();
         }
     }
@@ -89,9 +101,16 @@ impl<A: Animation> AnimationController<A> {
 
         if let Some((_, (start, end), index)) = &mut self.active_index {
             if self.timer.just_finished() {
-                *index += 1;
-                if *index >= *end {
-                    *index = *start;
+                if self.one_shot {
+                    *index += 1;
+                    if *index >= *end {
+                        *index = *end;
+                    }
+                } else {
+                    *index += 1;
+                    if *index >= *end {
+                        *index = *start;
+                    }
                 }
             }
         }

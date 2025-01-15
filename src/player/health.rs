@@ -1,4 +1,6 @@
-use super::{Action, Player};
+use crate::animation::AnimationController;
+
+use super::{Action, Player, PlayerAnimation};
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -53,11 +55,16 @@ pub(super) fn death(
     mut commands: Commands,
     server: Res<AssetServer>,
     mut player: Query<
-        (Entity, &mut Health, &mut ActionState<Action>),
+        (
+            Entity,
+            &mut Health,
+            &mut ActionState<Action>,
+            &mut AnimationController<PlayerAnimation>,
+        ),
         (With<Player>, Without<Dead>),
     >,
 ) {
-    let Ok((entity, mut health, mut action_state)) = player.get_single_mut() else {
+    let Ok((entity, mut health, mut action_state, mut animations)) = player.get_single_mut() else {
         return;
     };
 
@@ -68,6 +75,8 @@ pub(super) fn death(
             AudioPlayer::new(server.load("audio/sfx/death.wav")),
             PlaybackSettings::DESPAWN,
         ));
+
+        animations.set_animation_one_shot(PlayerAnimation::Death);
 
         action_state.disable_all_actions();
         commands.entity(entity).insert(Dead);
