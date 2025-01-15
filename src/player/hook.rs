@@ -1,10 +1,8 @@
-use crate::animation::AnimationController;
-
 use super::{
     health::{Dead, Health},
-    Action, BrushingLeft, BrushingMove, BrushingRight, Collider, CollidesWith, Grounded, Player,
-    PlayerAnimation, Velocity,
+    Action, Collider, CollidesWith, Player, PlayerAnimation, Velocity,
 };
+use crate::animation::AnimationController;
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_pixel_gfx::screen_shake;
 use leafwing_input_manager::prelude::*;
@@ -12,7 +10,6 @@ use leafwing_input_manager::prelude::*;
 const TARGET_THRESHOLD: f32 = 1024.0;
 const REEL_SPEED: f32 = 30.;
 const TERMINAL_VELOCITY2_THRESHOLD: f32 = 60_000.;
-const COMBO_PITCH_FACTOR: f32 = 0.1;
 
 #[derive(Debug, Resource)]
 pub(super) struct ShowHook(Visibility);
@@ -293,42 +290,5 @@ pub(super) fn collision_hook(
 pub(super) fn despawn_hook_kills(mut commands: Commands, mut reader: EventReader<HookKill>) {
     for kill in reader.read() {
         commands.entity(kill.0).despawn_recursive();
-    }
-}
-
-#[derive(Debug, Default, Component)]
-pub struct Combo(usize);
-
-pub(super) fn combo(
-    mut commands: Commands,
-    server: Res<AssetServer>,
-    mut reader: EventReader<HookKill>,
-    mut player: Query<(
-        &mut Combo,
-        Option<&Grounded>,
-        Option<&BrushingLeft>,
-        Option<&BrushingRight>,
-    )>,
-) {
-    let Ok((mut combo, grounded, brushing_left, brushing_right)) = player.get_single_mut() else {
-        return;
-    };
-
-    if grounded.is_some() || brushing_left.is_some() || brushing_right.is_some() {
-        combo.0 = 0;
-    }
-
-    for _ in reader.read() {
-        commands.spawn((
-            AudioPlayer::new(server.load("audio/sfx/combo.wav")),
-            PlaybackSettings::DESPAWN.with_speed(1. + combo.0 as f32 * COMBO_PITCH_FACTOR),
-        ));
-
-        commands.spawn((
-            AudioPlayer::new(server.load("audio/sfx/kill.wav")),
-            PlaybackSettings::DESPAWN,
-        ));
-
-        combo.0 += 1;
     }
 }

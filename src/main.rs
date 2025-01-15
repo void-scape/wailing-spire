@@ -38,6 +38,7 @@ fn main() {
             physics::PhysicsPlugin,
             spire::SpirePlugin,
             enemies::EnemyPlugin,
+            bevy_tween::DefaultTweenPlugins,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {

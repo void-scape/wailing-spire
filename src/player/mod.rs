@@ -9,8 +9,8 @@ use bevy_ldtk_scene::extract::levels::LevelMeta;
 use bevy_ldtk_scene::levels::Level;
 use bevy_pixel_gfx::camera::MainCamera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
+use combo::Combo;
 use health::Health;
-use hook::Combo;
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
 };
@@ -21,6 +21,7 @@ use leafwing_input_manager::{
 };
 use std::hash::Hash;
 
+mod combo;
 mod health;
 mod hook;
 
@@ -54,7 +55,7 @@ impl Plugin for PlayerPlugin {
                         hook::move_hook,
                         hook::terminal_velocity,
                         hook::collision_hook,
-                        hook::combo,
+                        combo::combo,
                     )
                         .chain(),
                     health::death,
