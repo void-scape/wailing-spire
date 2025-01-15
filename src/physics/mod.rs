@@ -56,6 +56,7 @@ impl Plugin for PhysicsPlugin {
                     (gravity::apply_gravity, velocity::apply_velocity)
                         .chain()
                         .in_set(PhysicsSystems::Velocity),
+                    collision::clear_resolution.before(PhysicsSystems::Collision),
                     (
                         bevy::transform::systems::sync_simple_transforms,
                         bevy::transform::systems::propagate_transforms,

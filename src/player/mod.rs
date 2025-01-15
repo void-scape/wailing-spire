@@ -79,8 +79,13 @@ const WALL_IMPULSE: f32 = 400.;
 const WALK_SPEED: f32 = 130.;
 const AIR_ACCEL: f32 = 0.08;
 const AIR_DAMPING: f32 = 0.04;
-const SLIDE_SPEED: f32 = 20.;
+const SLIDE_SPEED: f32 = 40.;
 const WALL_STICK_TIME: f32 = 0.20;
+
+/// The angle (in terms of the dot product)
+/// at which the player should break lock-on
+/// with a target when hitting a static body.
+const BREAK_ANGLE: f32 = 0.66;
 
 const JUMP_SPEED: f32 = 200.;
 const JUMP_MAX_DURATION: f32 = 0.2;
@@ -249,12 +254,15 @@ fn homing_movement(
             &GlobalTransform,
             &Collider,
             &mut Velocity,
+            &Resolution,
+            Option<&Collision>,
         ),
         With<Player>,
     >,
     target: Query<(&GlobalTransform, &Collider, Option<&Velocity>), Without<Player>>,
+    mut commands: Commands,
 ) {
-    let Ok((player, mut homing, player_trans, player_collider, mut player_vel)) =
+    let Ok((player, mut homing, player_trans, player_collider, mut player_vel, res, collision)) =
         player.get_single_mut()
     else {
         return;
@@ -267,16 +275,27 @@ fn homing_movement(
 
     let target = target_trans.compute_transform();
     let abs_target = target_collider.absolute(&target);
-
     let abs_player = player_collider.global_absolute(player_trans);
 
-    let vector = abs_target.center() - abs_player.center();
-    let vector = vector.normalize_or_zero() * 500.;
+    let vector = (abs_target.center() - abs_player.center()).normalize_or_zero();
+
+    if collision.is_some() {
+        let contact_normal = res.get().normalize_or_zero();
+        let bounce_dot = (contact_normal * -1.0).dot(vector);
+
+        if bounce_dot > BREAK_ANGLE {
+            commands.entity(player).remove::<Homing>();
+            // TODO: get a nice bounce
+            // player_vel.0 = contact_normal * 100.;
+            return;
+        }
+    }
 
     // we have some velocity damping
-    homing.starting_velocity *= 0.95;
+    homing.starting_velocity *= 0.97;
 
-    player_vel.0 = vector + target_vel.map(|t| t.0).unwrap_or_default() + homing.starting_velocity;
+    player_vel.0 =
+        vector * 500. + target_vel.map(|t| t.0).unwrap_or_default() + homing.starting_velocity;
 }
 
 fn manage_brushing_move(
@@ -303,8 +322,9 @@ fn manage_brushing_move(
     let axis_pair = action.clamped_axis_pair(&Action::Run);
     let direction = Direction::from_vec(axis_pair);
 
-    if grounded.is_none() && brushing_left.is_some() && direction == Direction::Right
-        || brushing_right.is_some() && direction == Direction::Left
+    if grounded.is_none()
+        && (brushing_left.is_some() && direction == Direction::Right
+            || brushing_right.is_some() && direction == Direction::Left)
     {
         brushing_move.0.tick(time.delta());
     } else {

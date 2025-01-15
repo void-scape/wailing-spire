@@ -17,6 +17,17 @@ use std::cmp::Ordering;
 #[derive(Default, Component)]
 pub struct Collision;
 
+/// A vector describing the collision resolution applied to
+/// this entity during collision checking, if any.
+#[derive(Default, Component)]
+pub struct Resolution(Vec2);
+
+impl Resolution {
+    pub fn get(&self) -> Vec2 {
+        self.0
+    }
+}
+
 /// Marks this entity as having a static position throughout the lifetime of the program.
 ///
 /// All [`StaticBody`] entities are added to a [`spatial::SpatialHash`] after spawning.
@@ -53,6 +64,7 @@ pub struct Massive;
 /// To check for collisions, first convert this enum into an [`AbsoluteCollider`]
 /// with [`Collider::absolute`].
 #[derive(Debug, Clone, Copy, PartialEq, Component)]
+#[require(Resolution)]
 pub enum Collider {
     Rect(RectCollider),
     Circle(CircleCollider),
@@ -381,6 +393,12 @@ impl CollidesWith<CircleCollider> for RectCollider {
     }
 }
 
+pub fn clear_resolution(mut q: Query<&mut Resolution>) {
+    for mut res in q.iter_mut() {
+        res.0 = Vec2::default();
+    }
+}
+
 pub fn handle_collisions<T: Component>(
     mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
@@ -391,11 +409,12 @@ pub fn handle_collisions<T: Component>(
             &mut Transform,
             &Collider,
             &mut Velocity,
+            &mut Resolution,
         ),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
 ) {
-    for (entity, mut global_transform, mut transform, collider, mut velocity) in
+    for (entity, mut global_transform, mut transform, collider, mut velocity, mut resolution) in
         dynamic_bodies.iter_mut()
     {
         let mut collision = false;
@@ -417,7 +436,10 @@ pub fn handle_collisions<T: Component>(
             for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
                 if collider.collides_with(sc) {
                     collision = true;
-                    let res = collider.resolution(sc).extend(0.);
+                    let res = collider.resolution(sc);
+                    resolution.0 += res;
+
+                    let res = res.extend(0.0);
                     transform.translation += res;
                     global_t.translation += res;
                     collider = original_collider.absolute(&global_t);
@@ -556,7 +578,13 @@ pub fn update_brushing<T: Component>(
 
 pub fn handle_dynamic_body_collsions<T: Component>(
     mut dynamic_bodies: Query<
-        (Entity, &mut Transform, &Collider, Option<&Massive>),
+        (
+            Entity,
+            &mut Transform,
+            &Collider,
+            Option<&Massive>,
+            &mut Resolution,
+        ),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,
     other_bodies: Query<
@@ -588,7 +616,7 @@ pub fn handle_dynamic_body_collsions<T: Component>(
         });
     }
 
-    for (entity, mut transform, collider, massive) in dynamic_bodies.iter_mut() {
+    for (entity, mut transform, collider, massive, mut resolution) in dynamic_bodies.iter_mut() {
         let original_collider = &collider;
         let mut collider = collider.absolute(&transform);
 
@@ -606,6 +634,7 @@ pub fn handle_dynamic_body_collsions<T: Component>(
         {
             if collider.collides_with(sc) && massive.is_none() {
                 let res_v = collider.resolution(sc);
+                resolution.0 += res_v;
                 transform.translation += Vec3::new(res_v.x, res_v.y, 0.);
                 collider = original_collider.absolute(&transform);
                 update_active = true;
