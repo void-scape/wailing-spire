@@ -16,14 +16,14 @@ use spire::*;
 
 mod animation;
 mod enemies;
-mod entity_registry;
+mod entities;
 mod map;
 mod physics;
 mod player;
 mod spire;
 
-const WIDTH: f32 = 320.;
-const HEIGHT: f32 = 180.;
+const WIDTH: f32 = 384.;
+const HEIGHT: f32 = 216.;
 const TILE_SIZE: f32 = 16.;
 const LEVEL_SIZE: Vec2 = Vec2::splat(20.);
 
@@ -34,16 +34,17 @@ fn main() {
             bevy_pixel_gfx::PixelGfxPlugin(CanvasDimensions::new(WIDTH as u32, HEIGHT as u32)),
             bevy_ldtk_scene::LdtkScenePlugin,
             player::PlayerPlugin,
-            entity_registry::EntityRegistryPlugin,
             physics::PhysicsPlugin,
             spire::SpirePlugin,
             enemies::EnemyPlugin,
             bevy_tween::DefaultTweenPlugins,
+            entities::EntityPlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {
             SpatialHash::<StaticBodyData>::new(32.)
         })
+        .insert_resource(GlobalVolume::new(0.5))
         .insert_resource(Gravity(Vec2::NEG_Y * 12.))
         .insert_resource(ClearColor(srgb_from_hex(0x0d001a)))
         .add_systems(Update, close_on_escape)
@@ -79,10 +80,12 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
         // LevelLoader::levels_with_offset(map, Vec2::ZERO),
         LevelLoader::levels(Stack((
             SpireStartLevel,
-            Spire1Level,
-            Spire2Level,
+            // Spire1Level,
+            // Spire2Level,
             SpireEndLevel,
         ))),
+        AudioPlayer::new(server.load("audio/music/foreign.wav")),
+        PlaybackSettings::LOOP,
     ));
 }
 

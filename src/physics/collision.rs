@@ -140,6 +140,13 @@ impl AbsoluteCollider {
         }
     }
 
+    pub fn contains(&self, point: &Vec2) -> bool {
+        match self {
+            Self::Rect(r) => r.contains(point),
+            _ => todo!(),
+        }
+    }
+
     pub fn max_x(&self) -> f32 {
         match self {
             Self::Rect(rect) => rect.tl.x + rect.size.x,
@@ -207,6 +214,10 @@ impl RectCollider {
         let new_center = self.center();
         self.tl += center - new_center;
         self
+    }
+
+    pub fn contains(&self, point: &Vec2) -> bool {
+        Rect::from_corners(self.tl, self.br()).contains(*point)
     }
 
     pub fn br(&self) -> Vec2 {

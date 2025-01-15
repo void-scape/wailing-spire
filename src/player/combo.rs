@@ -1,4 +1,4 @@
-use super::{hook::HookKill, BrushingLeft, BrushingRight, Grounded, Homing};
+use super::{BrushingLeft, BrushingRight, Grounded, Homing, HookTargetCollision};
 use bevy::prelude::*;
 use bevy_pixel_gfx::pixel_perfect::HIGH_RES_LAYER;
 use bevy_tween::{
@@ -19,10 +19,14 @@ pub struct ComboText;
 #[derive(Component)]
 pub struct TextAnimation;
 
+/// An entity with this marker (and [`Collider`](crate::physics::collision::Collider)) will increase the player's [`Combo`] score when collided with.
+#[derive(Default, Component)]
+pub struct ComboCollision;
+
 pub(super) fn combo(
     mut commands: Commands,
     server: Res<AssetServer>,
-    mut reader: EventReader<HookKill>,
+    mut reader: EventReader<HookTargetCollision>,
     mut player: Query<(
         Entity,
         &mut Combo,
@@ -31,6 +35,7 @@ pub(super) fn combo(
         Option<&BrushingLeft>,
         Option<&BrushingRight>,
     )>,
+    combo_query: Query<Entity, With<ComboCollision>>,
     text_query: Query<Entity, With<ComboText>>,
     animation_query: Query<Entity, With<TextAnimation>>,
 ) {
@@ -53,7 +58,10 @@ pub(super) fn combo(
         combo.0 = 0;
     }
 
-    for _ in reader.read() {
+    for _ in reader
+        .read()
+        .filter(|c| combo_query.get(c.entity()).is_ok())
+    {
         combo.0 += 1;
 
         commands.spawn((

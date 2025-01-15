@@ -1,14 +1,14 @@
-use super::{
-    health::{Dead, Health},
-    Action, Collider, CollidesWith, Player, PlayerAnimation, Velocity,
+use crate::{
+    physics::spatial::{SpatialHash, StaticBodyData},
+    TILE_SIZE,
 };
-use crate::animation::AnimationController;
-use bevy::{prelude::*, sprite::Anchor};
-use bevy_pixel_gfx::screen_shake;
-use leafwing_input_manager::prelude::*;
 
-const TARGET_THRESHOLD: f32 = 1024.0;
-const REEL_SPEED: f32 = 30.;
+use super::{health::Dead, Action, Collider, CollidesWith, Player, Velocity};
+use bevy::{prelude::*, sprite::Anchor};
+use leafwing_input_manager::prelude::*;
+use std::cmp::Ordering;
+
+const TARGET_THRESHOLD: f32 = 256.0;
 const TERMINAL_VELOCITY2_THRESHOLD: f32 = 60_000.;
 
 #[derive(Debug, Resource)]
@@ -50,14 +50,18 @@ pub struct Hook {
 #[derive(Component)]
 pub struct Chain;
 
+/// Requires a [`Collider`] to be a viable target.
 #[derive(Component, Default, Debug)]
 pub struct HookTarget;
 
 #[derive(Resource, Debug, Default)]
-pub struct ViableTargets(Vec<Entity>);
+pub struct ViableTargets(Vec<ViableTarget>);
 
-// #[derive(Component)]
-// pub struct SelectedTarget(Entity);
+#[derive(Debug)]
+struct ViableTarget {
+    entity: Entity,
+    translation: Vec2,
+}
 
 /// Player is moving fast enough to _kill_ enemies.
 #[derive(Component)]
@@ -86,6 +90,7 @@ pub(super) fn gather_viable_targets(
     targets: Query<(Entity, &GlobalTransform), With<HookTarget>>,
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
+    spatial_hash_query: Query<&SpatialHash<StaticBodyData>>,
 ) {
     viable.0.clear();
 
@@ -101,22 +106,34 @@ pub(super) fn gather_viable_targets(
                 t,
                 t.compute_transform()
                     .translation
-                    .distance_squared(player.compute_transform().translation),
+                    .distance_squared(player.translation()),
             )
         })
         .filter(|t| t.2 < TARGET_THRESHOLD * TARGET_THRESHOLD)
+        // .filter(|t| {
+        //     spatial_hash_query.iter().all(|hash| {
+        //         let pxy = player.translation().xy();
+        //         let txy = t.1.translation().xy();
+        //
+        //         let dist = pxy - txy;
+        //         hash.ray_trace(txy, pxy, (dist.length() / TILE_SIZE) as usize)
+        //     })
+        // })
         .collect();
 
     targets.sort_unstable_by(|a, b| a.2.total_cmp(&b.2));
 
-    viable.0.extend(targets.drain(..).map(|t| t.0));
+    viable.0.extend(targets.drain(..).map(|t| ViableTarget {
+        entity: t.0,
+        translation: t.1.translation().xy(),
+    }));
 }
 
 pub(super) fn move_hook(
     mut commands: Commands,
     mut hook: Query<(&mut Visibility, &mut Transform, &Hook), (Without<Chain>, Without<Player>)>,
     mut chains: Query<&mut Transform, (With<Chain>, Without<Player>)>,
-    targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
+    collider_targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
     player: Query<
         (
             Entity,
@@ -136,17 +153,10 @@ pub(super) fn move_hook(
     let Ok((mut hook_visibility, mut hook_transform, hook)) = hook.get_single_mut() else {
         return;
     };
-    let Some(closest) = viable.0.first() else {
-        return;
-    };
-    let Ok((targ_entity, target, target_collider)) = targets.get(*closest) else {
-        *hook_visibility = Visibility::Hidden;
-        return;
-    };
+
     let Ok((player_entity, action, player, player_collider, player_velocity, homing)) =
         player.get_single()
     else {
-        *hook_visibility = Visibility::Hidden;
         return;
     };
 
@@ -160,39 +170,65 @@ pub(super) fn move_hook(
         }
     }
 
-    let target = target.compute_transform();
-    let abs_target = target_collider.absolute(&target);
+    let axis_pair = action.clamped_axis_pair(&Action::Run);
+    if let Some(targ_selection) = if axis_pair != Vec2::ZERO {
+        let mut viable_heuristic = viable
+            .0
+            .iter()
+            .map(|t| {
+                (
+                    t.entity,
+                    (t.translation - player.translation().xy())
+                        .normalize_or_zero()
+                        .dot(Vec2::new(axis_pair.x, axis_pair.y).normalize_or_zero()),
+                )
+            })
+            .filter(|(_, dot)| dot.is_sign_positive())
+            .collect::<Vec<_>>();
 
-    hook_transform.translation.x = abs_target.center().x;
-    hook_transform.translation.y = abs_target.center().y;
+        if viable_heuristic.is_empty() {
+            viable.0.first().map(|t| t.entity)
+        } else {
+            viable_heuristic.sort_unstable_by(|(_, dot_a), (_, dot_b)| {
+                if (dot_a.abs() - dot_b.abs()).abs() < 0.3 {
+                    Ordering::Equal
+                } else {
+                    dot_a.total_cmp(dot_b)
+                }
+            });
+            viable_heuristic.first().map(|(entity, _)| *entity)
+        }
+    } else {
+        viable.0.first().map(|t| t.entity)
+    } {
+        if let Ok((targ_entity, target, target_collider)) = collider_targets.get(targ_selection) {
+            let target = target.compute_transform();
+            let abs_target = target_collider.absolute(&target);
 
-    let abs_player = player_collider.global_absolute(player);
+            hook_transform.translation.x = abs_target.center().x;
+            hook_transform.translation.y = abs_target.center().y;
 
-    let vector = abs_target.center() - abs_player.center();
-    let segments = vector / hook.chains.len() as f32;
+            let abs_player = player_collider.global_absolute(player);
 
-    for (i, chain) in hook.chains.iter().enumerate() {
-        let Ok(mut chain) = chains.get_mut(*chain) else {
-            continue;
-        };
+            let vector = abs_target.center() - abs_player.center();
+            let segments = vector / hook.chains.len() as f32;
 
-        chain.translation = (abs_player.center() + segments * i as f32).extend(10.);
+            for (i, chain) in hook.chains.iter().enumerate() {
+                let Ok(mut chain) = chains.get_mut(*chain) else {
+                    continue;
+                };
+
+                chain.translation = (abs_player.center() + segments * i as f32).extend(10.);
+            }
+
+            if action.just_pressed(&Action::Interact) && homing.is_none() {
+                commands.entity(player_entity).insert(super::Homing {
+                    target: targ_entity,
+                    starting_velocity: player_velocity.0,
+                });
+            }
+        }
     }
-
-    if action.just_pressed(&Action::Interact) && homing.is_none() {
-        commands.entity(player_entity).insert(super::Homing {
-            target: targ_entity,
-            starting_velocity: player_velocity.0,
-        });
-    }
-
-    // if action.pressed(&Action::Interact) {
-    //     commands
-    //         .entity(player_entity)
-    //         .insert(SelectedTarget(targ_entity));
-    // } else {
-    //     commands.entity(player_entity).remove::<SelectedTarget>();
-    // }
 }
 
 pub(super) fn terminal_velocity(
@@ -225,36 +261,49 @@ pub(super) fn terminal_velocity(
     }
 }
 
-#[derive(Debug, Event)]
-pub struct HookKill(Entity);
+#[derive(Debug, Clone, Copy, Event)]
+pub struct HookTargetCollision {
+    entity: Entity,
+    shield: PlayerShield,
+}
+
+impl HookTargetCollision {
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
+
+    pub fn shield_up(&self) -> bool {
+        matches!(self.shield, PlayerShield::Up)
+    }
+
+    pub fn shield_down(&self) -> bool {
+        matches!(self.shield, PlayerShield::Down)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayerShield {
+    Up,
+    Down,
+}
 
 pub(super) fn collision_hook(
     mut commands: Commands,
     targets: Query<(Entity, &GlobalTransform, &Collider)>,
-    mut player: Query<
+    player: Query<
         (
             Entity,
             &GlobalTransform,
             &Collider,
             &super::Homing,
             Option<&TerminalVelocity>,
-            &mut Health,
-            &mut AnimationController<PlayerAnimation>,
         ),
         (With<Player>, Without<Dead>),
     >,
-    mut writer: EventWriter<HookKill>,
-    mut screen_shake: ResMut<screen_shake::ScreenShake>,
+    mut writer: EventWriter<HookTargetCollision>,
 ) {
-    let Ok((
-        player_entity,
-        player,
-        player_collider,
-        selected_target,
-        terminal_velocity,
-        mut health,
-        mut animations,
-    )) = player.get_single_mut()
+    let Ok((player_entity, player, player_collider, selected_target, terminal_velocity)) =
+        player.get_single()
     else {
         return;
     };
@@ -266,29 +315,18 @@ pub(super) fn collision_hook(
     let abs_target = target_collider.global_absolute(target);
     let abs_player = player_collider.global_absolute(player);
 
-    // defer despawn until post_update
     if abs_player.expand(2.).collides_with(&abs_target) {
         if terminal_velocity.is_some() {
             commands.entity(player_entity).remove::<super::Homing>();
-            writer.send(HookKill(targ_entity));
-
-            screen_shake
-                .max_offset(75.)
-                .camera_decay(0.9)
-                .trauma_decay(1.2)
-                .shake();
+            writer.send(HookTargetCollision {
+                entity: targ_entity,
+                shield: PlayerShield::Up,
+            });
         } else {
-            // TODO: trigger collision for health + trigger must leave before you get hit again +
-            // kickback
-            health.damage(1);
-            animations.set_animation_one_shot(PlayerAnimation::Hit);
-            println!("Ouch! [{}/{}]", health.current(), health.max());
+            writer.send(HookTargetCollision {
+                entity: targ_entity,
+                shield: PlayerShield::Down,
+            });
         }
-    }
-}
-
-pub(super) fn despawn_hook_kills(mut commands: Commands, mut reader: EventReader<HookKill>) {
-    for kill in reader.read() {
-        commands.entity(kill.0).despawn_recursive();
     }
 }

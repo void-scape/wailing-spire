@@ -111,6 +111,26 @@ impl<D: Clone> SpatialHash<D> {
         })
     }
 
+    /// Returns false if encountered collision along path.
+    pub fn ray_trace(&self, start: Vec2, end: Vec2, samples: usize) -> bool {
+        let samples = (0..samples)
+            .map(|i| start.lerp(end, i as f32 / samples as f32))
+            .collect::<Vec<_>>();
+        for sample in samples.iter() {
+            if let Some(cells) = self.objects.get(&(self.hash(sample))) {
+                for cell in cells.iter() {
+                    for sample in samples.iter() {
+                        if cell.collider.contains(sample) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
     pub fn nearby_objects_mut<'a>(
         &'a mut self,
         position: &Vec2,

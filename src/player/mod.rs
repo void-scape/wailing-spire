@@ -25,14 +25,16 @@ mod combo;
 mod health;
 mod hook;
 
-pub use hook::HookTarget;
+pub use combo::ComboCollision;
+pub use health::HookedDamage;
+pub use hook::{HookTarget, HookTargetCollision};
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_required_components::<crate::spire::Knight, Player>()
-            .add_event::<hook::HookKill>()
+            .add_event::<hook::HookTargetCollision>()
             .init_resource::<hook::ViableTargets>()
             .insert_resource(hook::ShowHook::default())
             .add_plugins((
@@ -59,15 +61,13 @@ impl Plugin for PlayerPlugin {
                     )
                         .chain(),
                     health::death,
+                    health::hook_collision,
                     hook::show_hook,
                 ),
             )
             .add_systems(
                 PostUpdate,
-                (
-                    hook::despawn_hook_kills,
-                    move_camera.before(TransformSystem::TransformPropagate),
-                ),
+                move_camera.before(TransformSystem::TransformPropagate),
             );
     }
 }

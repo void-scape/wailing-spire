@@ -1,8 +1,11 @@
+use super::{hook::HookTargetCollision, Action, Player, PlayerAnimation};
 use crate::animation::AnimationController;
-
-use super::{Action, Player, PlayerAnimation};
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
+
+/// Deal damage to player if hooked and collided with.
+#[derive(Default, Component)]
+pub struct HookedDamage;
 
 #[derive(Component)]
 pub struct Health {
@@ -80,5 +83,26 @@ pub(super) fn death(
 
         action_state.disable_all_actions();
         commands.entity(entity).insert(Dead);
+    }
+}
+
+pub(super) fn hook_collision(
+    mut player: Query<(&mut Health, &mut AnimationController<PlayerAnimation>), With<Player>>,
+    mut reader: EventReader<HookTargetCollision>,
+    damage_query: Query<&HookedDamage>,
+) {
+    let Ok((mut health, mut animations)) = player.get_single_mut() else {
+        return;
+    };
+
+    for _ in reader
+        .read()
+        .filter(|c| c.shield_down() && damage_query.get(c.entity()).is_ok())
+    {
+        // TODO: trigger collision for health + trigger must leave before you get hit again +
+        // kickback
+        health.damage(1);
+        animations.set_animation_one_shot(PlayerAnimation::Hit);
+        println!("Ouch! [{}/{}]", health.current(), health.max());
     }
 }
