@@ -27,11 +27,11 @@ use std::hash::Hash;
 
 mod combo;
 pub mod health;
-mod hook;
+pub mod hook;
 
 pub use combo::ComboCollision;
 pub use health::HookedDamage;
-pub use hook::{HookTarget, HookTargetCollision};
+pub use hook::{HookTarget, HookTargetCollision, OccludeHookTarget};
 
 pub struct PlayerPlugin;
 

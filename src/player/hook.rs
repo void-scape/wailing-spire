@@ -54,6 +54,11 @@ pub struct Chain;
 #[derive(Component, Default, Debug)]
 pub struct HookTarget;
 
+/// When combined with a [`SpatialHash`], performs ray
+/// casting on collision to occlude viable hook targets.
+#[derive(Default, Component)]
+pub struct OccludeHookTarget;
+
 #[derive(Resource, Debug, Default)]
 pub struct ViableTargets(Vec<ViableTarget>);
 
@@ -90,7 +95,7 @@ pub(super) fn gather_viable_targets(
     targets: Query<(Entity, &GlobalTransform), With<HookTarget>>,
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
-    spatial_hash_query: Query<&SpatialHash<StaticBodyData>>,
+    spatial_hash_query: Query<&SpatialHash<StaticBodyData>, With<OccludeHookTarget>>,
 ) {
     viable.0.clear();
 
@@ -110,15 +115,15 @@ pub(super) fn gather_viable_targets(
             )
         })
         .filter(|t| t.2 < TARGET_THRESHOLD * TARGET_THRESHOLD)
-        // .filter(|t| {
-        //     spatial_hash_query.iter().all(|hash| {
-        //         let pxy = player.translation().xy();
-        //         let txy = t.1.translation().xy();
-        //
-        //         let dist = pxy - txy;
-        //         hash.ray_trace(txy, pxy, (dist.length() / TILE_SIZE) as usize)
-        //     })
-        // })
+        .filter(|t| {
+            spatial_hash_query.iter().all(|hash| {
+                let pxy = player.translation().xy();
+                let txy = t.1.translation().xy();
+
+                let dist = pxy - txy;
+                hash.ray_cast(txy, pxy, (dist.length() / TILE_SIZE) as usize)
+            })
+        })
         .collect();
 
     targets.sort_unstable_by(|a, b| a.2.total_cmp(&b.2));

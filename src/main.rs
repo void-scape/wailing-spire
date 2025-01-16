@@ -13,7 +13,7 @@ use physics::{
     layers,
     spatial::{SpatialHash, StaticBodyData},
 };
-use player::{health::Dead, Player};
+use player::{health::Dead, OccludeHookTarget, Player};
 use spire::*;
 
 mod animation;
@@ -49,6 +49,7 @@ fn main() {
             SpatialHash::<StaticBodyData>::new(32.)
         })
         .register_required_components::<LevelTileSets, layers::Wall>()
+        .register_required_components::<LevelTileSets, OccludeHookTarget>()
         .insert_resource(GlobalVolume::new(0.5))
         .insert_resource(Gravity(Vec2::NEG_Y * 12.))
         .insert_resource(ClearColor(srgb_from_hex(0x0d001a)))

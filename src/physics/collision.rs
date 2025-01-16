@@ -229,7 +229,7 @@ impl RectCollider {
     }
 
     pub fn contains(&self, point: &Vec2) -> bool {
-        Rect::from_corners(self.tl, self.br()).contains(*point)
+        self.tl.x < point.x && self.br().x > point.x && self.tl.y > point.y && self.br().y < point.y
     }
 
     pub fn br(&self) -> Vec2 {

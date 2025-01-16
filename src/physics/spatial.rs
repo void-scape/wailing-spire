@@ -116,7 +116,7 @@ impl<D: Clone> SpatialHash<D> {
     }
 
     /// Returns false if encountered collision along path.
-    pub fn ray_trace(&self, start: Vec2, end: Vec2, samples: usize) -> bool {
+    pub fn ray_cast(&self, start: Vec2, end: Vec2, samples: usize) -> bool {
         let samples = (0..samples)
             .map(|i| start.lerp(end, i as f32 / samples as f32))
             .collect::<Vec<_>>();
