@@ -40,10 +40,12 @@ impl Plugin for PhysicsPlugin {
             .insert_after(FixedUpdate, Physics);
 
         app.register_collision_layer::<layers::Player>()
+            .register_collision_layer::<layers::Enemy>()
             .register_collision_layer::<layers::Wall>()
-            .register_collision_layer::<layers::Enemy>();
+            .register_grounded_layer::<layers::Wall>()
+            .register_brushing_layer::<layers::Wall>();
 
-        app.register_required_components::<spatial::SpatialHash<spatial::StaticBodyData>, layers::Wall>();
+        // app.register_required_components::<spatial::SpatialHash<spatial::StaticBodyData>, layers::Wall>();
 
         app.add_plugins(Wireframe2dPlugin)
             .add_event::<trigger::TriggerEvent>()

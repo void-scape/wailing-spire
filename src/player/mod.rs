@@ -1,3 +1,4 @@
+use crate::spikes;
 use crate::TILE_SIZE;
 use crate::{
     animation::{AnimationController, AnimationPlugin},
@@ -9,8 +10,11 @@ use bevy_ldtk_scene::extract::levels::LevelMeta;
 use bevy_ldtk_scene::levels::Level;
 use bevy_pixel_gfx::camera::MainCamera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
+use bevy_tween::combinator::tween;
+use bevy_tween::prelude::*;
 use combo::Combo;
 use health::Health;
+use interpolate::sprite_color_to;
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
 };
@@ -22,7 +26,7 @@ use leafwing_input_manager::{
 use std::hash::Hash;
 
 mod combo;
-mod health;
+pub mod health;
 mod hook;
 
 pub use combo::ComboCollision;
@@ -47,9 +51,8 @@ impl Plugin for PlayerPlugin {
                 (
                     (
                         manage_brushing_move,
-                        (update, homing_movement),
-                        jump,
-                        update_current_level,
+                        (update, homing_movement, update_current_level),
+                        (jump, dash),
                     )
                         .chain(),
                     (
@@ -75,7 +78,6 @@ impl Plugin for PlayerPlugin {
 const CAMERA_SPEED: f32 = 0.1;
 
 const MAX_VEL: f32 = 300.;
-const MAX_X_VEL: f32 = 100.;
 const WALL_IMPULSE: f32 = 400.;
 const WALK_SPEED: f32 = 130.;
 const AIR_ACCEL: f32 = 0.08;
@@ -90,7 +92,11 @@ const BREAK_ANGLE: f32 = 0.66;
 
 const JUMP_SPEED: f32 = 200.;
 const JUMP_MAX_DURATION: f32 = 0.2;
-// const JUMP_MAX_DURATION: f32 = 200.;
+
+const DASH_DURATION: f32 = 0.1;
+const DASH_SPEED: f32 = 1000.;
+/// Divides the velocity by this factor _once_ after a dash is completed.
+const DASH_DECAY: f32 = 2.;
 
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
@@ -104,6 +110,7 @@ const JUMP_MAX_DURATION: f32 = 0.2;
 #[require(layers::Player)]
 #[require(Combo)]
 #[require(Health(|| Health::PLAYER))]
+#[require(layers::CollidesWith<spikes::Spike>)]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -122,9 +129,11 @@ fn input_map() -> InputMap<Action> {
     InputMap::new([
         (Action::Jump, KeyCode::Space),
         (Action::Interact, KeyCode::KeyE),
+        (Action::Dash, KeyCode::KeyC),
     ])
     .with(Action::Jump, GamepadButton::South)
     .with(Action::Interact, GamepadButton::North)
+    .with(Action::Dash, GamepadButton::East)
     .with_dual_axis(Action::Run, GamepadStick::LEFT.with_deadzone_symmetric(0.3))
     .with_dual_axis(Action::Run, VirtualDPad::wasd())
 }
@@ -149,6 +158,7 @@ pub enum Action {
     #[actionlike(DualAxis)]
     Run,
     Jump,
+    Dash,
     Interact,
 }
 
@@ -236,6 +246,9 @@ fn move_camera(
 
 #[derive(Component)]
 struct Jumping;
+
+#[derive(Component)]
+struct Dashing(Option<Vec2>);
 
 #[derive(Component, Default, Debug)]
 struct BrushingMove(Stopwatch);
@@ -346,6 +359,7 @@ fn update(
                 &mut Velocity,
                 &BrushingMove,
                 Option<&Grounded>,
+                Option<&Dashing>,
                 Option<&BrushingLeft>,
                 Option<&BrushingRight>,
             ),
@@ -363,6 +377,7 @@ fn update(
         mut velocity,
         brushing_move,
         grounded,
+        dashing,
         brushing_left,
         brushing_right,
     )) = player.map(|p| p.into_inner())
@@ -376,22 +391,19 @@ fn update(
 
             if grounded.is_some() {
                 velocity.0.x = dir.into_unit_vec2().x * WALK_SPEED;
-            } else {
-                if !((brushing_left.is_some() || brushing_right.is_some())
+            } else if dashing.is_none()
+                && !((brushing_left.is_some() || brushing_right.is_some())
                     && brushing_move.0.elapsed_secs() <= WALL_STICK_TIME)
-                {
-                    match dir {
-                        Direction::Right => {
-                            if velocity.0.x < WALK_SPEED {
-                                velocity.0.x =
-                                    (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
-                            }
+            {
+                match dir {
+                    Direction::Right => {
+                        if velocity.0.x < WALK_SPEED {
+                            velocity.0.x = (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
                         }
-                        Direction::Left => {
-                            if velocity.0.x > -WALK_SPEED {
-                                velocity.0.x =
-                                    (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
-                            }
+                    }
+                    Direction::Left => {
+                        if velocity.0.x > -WALK_SPEED {
+                            velocity.0.x = (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
                         }
                     }
                 }
@@ -433,6 +445,11 @@ fn update(
                         velocity.0.x -= WALL_IMPULSE;
                     }
                 }
+                Action::Dash => {
+                    commands
+                        .entity(entity)
+                        .insert(Dashing((axis_pair != Vec2::ZERO).then_some(axis_pair)));
+                }
                 _ => {}
             }
         }
@@ -442,7 +459,10 @@ fn update(
 fn jump(
     mut commands: Commands,
     player: Option<
-        Single<(Entity, &ActionState<Action>, &mut Velocity), (With<Player>, With<Jumping>)>,
+        Single<
+            (Entity, &ActionState<Action>, &mut Velocity),
+            (With<Player>, With<Jumping>, Without<Dashing>),
+        >,
     >,
     time: Res<Time>,
     mut timer: Local<Option<Timer>>,
@@ -469,40 +489,94 @@ fn jump(
     }
 }
 
-// TODO: need some notion of look direction
-// fn animate_cutscene(
-//     mut player: Query<
-//         (&mut AnimationController<PlayerAnimation>, &CutsceneVelocity),
-//         (With<Player>, With<CutsceneMovement>),
-//     >,
-//     mut last_direction: Local<Option<Direction>>,
-// ) {
-//     if let Ok((mut animation, velocity)) = player.get_single_mut() {
-//         let vel = velocity.0.xy();
-//
-//         if vel == Vec2::ZERO {
-//             if let Some(dir) = *last_direction {
-//                 animation.set_animation(PlayerAnimation::Idle(dir));
-//                 *last_direction = None;
-//             }
-//         } else {
-//             let direction = Direction::from_velocity(vel);
-//
-//             let update = match *last_direction {
-//                 None => {
-//                     *last_direction = Some(direction);
-//                     true
-//                 }
-//                 Some(ld) if ld != direction => {
-//                     *last_direction = Some(direction);
-//                     true
-//                 }
-//                 _ => false,
-//             };
-//
-//             if update {
-//                 animation.set_animation(PlayerAnimation::Walk(Direction::from_velocity(vel)));
-//             }
-//         }
-//     }
-// }
+fn dash(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    player: Option<
+        Single<
+            (
+                Entity,
+                &GlobalTransform,
+                &Sprite,
+                &mut Velocity,
+                &ActionState<Action>,
+                Option<&Dashing>,
+                Option<&Grounded>,
+            ),
+            With<Player>,
+        >,
+    >,
+    mut reader: EventReader<HookTargetCollision>,
+    time: Res<Time>,
+    mut timer: Local<Option<Timer>>,
+    mut spawn_ghost_timer: Local<Option<Timer>>,
+    mut ghost_z: Local<usize>,
+    mut dash_reset: Local<bool>,
+    mut last_dir: Local<Vec2>,
+) {
+    if let Some((entity, transform, sprite, mut velocity, action_state, dash, grounded)) =
+        player.map(|p| p.into_inner())
+    {
+        let axis_pair = action_state.clamped_axis_pair(&Action::Run);
+        if axis_pair != Vec2::ZERO {
+            *last_dir = axis_pair;
+        }
+
+        if grounded.is_some() || reader.read().next().is_some() {
+            *dash_reset = true;
+            *ghost_z = 0;
+        }
+
+        if let Some(dash) = dash {
+            if *dash_reset {
+                if timer.is_none() {
+                    commands.spawn((
+                        AudioPlayer::new(server.load("audio/sfx/dash.wav")),
+                        PlaybackSettings::DESPAWN,
+                    ));
+                }
+
+                let dash_timer = timer
+                    .get_or_insert_with(|| Timer::from_seconds(DASH_DURATION, TimerMode::Once));
+                dash_timer.tick(time.delta());
+                if dash_timer.finished() {
+                    *dash_reset = false;
+                    commands.entity(entity).remove::<Dashing>();
+                    *timer = None;
+                    velocity.0 /= DASH_DECAY;
+                    return;
+                }
+
+                let dash_vec = dash.0.unwrap_or_else(|| *last_dir);
+                velocity.0 = dash_vec * DASH_SPEED;
+
+                let ghost_timer = spawn_ghost_timer.get_or_insert_with(|| {
+                    Timer::from_seconds(DASH_DURATION / 5., TimerMode::Repeating)
+                });
+                ghost_timer.tick(time.delta());
+                if ghost_timer.just_finished() {
+                    let ghost = commands
+                        .spawn((
+                            sprite.clone(),
+                            Transform::from_translation(
+                                transform.translation().xy().extend(*ghost_z as f32),
+                            ),
+                        ))
+                        .id()
+                        .into_target();
+                    *ghost_z += 1;
+
+                    commands.animation().insert(tween(
+                        Duration::from_secs_f32(0.2),
+                        EaseKind::Linear,
+                        ghost
+                            .state(Color::srgba(0., 0., 1., 1.))
+                            .with(sprite_color_to(Color::srgba(0., 0., 1., 0.))),
+                    ));
+                }
+            } else {
+                commands.entity(entity).remove::<Dashing>();
+            }
+        }
+    }
+}

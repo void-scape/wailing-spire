@@ -131,6 +131,7 @@ pub(super) fn gather_viable_targets(
 
 pub(super) fn move_hook(
     mut commands: Commands,
+    server: Res<AssetServer>,
     mut hook: Query<(&mut Visibility, &mut Transform, &Hook), (Without<Chain>, Without<Player>)>,
     mut chains: Query<&mut Transform, (With<Chain>, Without<Player>)>,
     collider_targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
@@ -222,6 +223,10 @@ pub(super) fn move_hook(
             }
 
             if action.just_pressed(&Action::Interact) && homing.is_none() {
+                commands.spawn((
+                    AudioPlayer::new(server.load("audio/sfx/hook.wav")),
+                    PlaybackSettings::DESPAWN,
+                ));
                 commands.entity(player_entity).insert(super::Homing {
                     target: targ_entity,
                     starting_velocity: player_velocity.0,
@@ -255,7 +260,9 @@ pub(super) fn terminal_velocity(
             }
         } else if let Some(shield) = *shielded {
             commands.entity(entity).remove::<TerminalVelocity>();
-            commands.entity(shield).despawn();
+            if let Some(mut entity) = commands.get_entity(shield) {
+                entity.despawn();
+            }
             *shielded = None;
         }
     }

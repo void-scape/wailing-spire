@@ -24,6 +24,8 @@ pub struct Player;
 
 pub trait RegisterCollisionLayer {
     fn register_collision_layer<T: Component>(&mut self) -> &mut Self;
+    fn register_grounded_layer<T: Component>(&mut self) -> &mut Self;
+    fn register_brushing_layer<T: Component>(&mut self) -> &mut Self;
 }
 
 impl RegisterCollisionLayer for App {
@@ -33,9 +35,25 @@ impl RegisterCollisionLayer for App {
             (
                 super::collision::handle_collisions::<T>,
                 super::collision::handle_dynamic_body_collsions::<T>,
-                super::collision::update_grounded::<T>,
-                super::collision::update_brushing::<T>,
             )
+                .chain()
+                .in_set(super::PhysicsSystems::Collision),
+        )
+    }
+
+    fn register_grounded_layer<T: Component>(&mut self) -> &mut Self {
+        self.add_systems(
+            super::Physics,
+            super::collision::update_grounded::<T>
+                .chain()
+                .in_set(super::PhysicsSystems::Collision),
+        )
+    }
+
+    fn register_brushing_layer<T: Component>(&mut self) -> &mut Self {
+        self.add_systems(
+            super::Physics,
+            super::collision::update_brushing::<T>
                 .chain()
                 .in_set(super::PhysicsSystems::Collision),
         )

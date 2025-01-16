@@ -47,6 +47,10 @@ impl<D: Clone> SpatialHash<D> {
         slf
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.objects.is_empty()
+    }
+
     fn hash(&self, position: &Vec2) -> (i32, i32) {
         (
             (position.x / self.cell_size).floor() as i32,

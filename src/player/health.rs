@@ -34,6 +34,11 @@ impl Health {
         self.dead = self.current == 0;
     }
 
+    pub fn damage_all(&mut self) {
+        self.current = 0;
+        self.dead = true;
+    }
+
     pub fn current(&self) -> usize {
         self.current
     }

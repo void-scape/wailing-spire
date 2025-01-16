@@ -1,5 +1,6 @@
 use super::{
     gravity::{BrushingLeft, BrushingRight, Grounded},
+    layers,
     prelude::Velocity,
     spatial,
 };
@@ -13,9 +14,20 @@ use bevy::{
 use spatial::{SpatialHash, StaticBodyData};
 use std::cmp::Ordering;
 
-/// Marks an entity as having experienced a collision.
+/// Contains a list of entities which a [`DynamicBody`] with [`layers::CollidesWith<T>`] collided
+/// with this frame.
 #[derive(Default, Component)]
-pub struct Collision;
+pub struct Collision(smallvec::SmallVec<[Entity; 4]>);
+
+impl Collision {
+    pub fn entities(&self) -> &[Entity] {
+        &self.0
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
+    }
+}
 
 /// A vector describing the collision resolution applied to
 /// this entity during collision checking, if any.
@@ -64,7 +76,7 @@ pub struct Massive;
 /// To check for collisions, first convert this enum into an [`AbsoluteCollider`]
 /// with [`Collider::absolute`].
 #[derive(Debug, Clone, Copy, PartialEq, Component)]
-#[require(Resolution)]
+#[require(Resolution, Collision)]
 pub enum Collider {
     Rect(RectCollider),
     Circle(CircleCollider),
@@ -411,28 +423,32 @@ pub fn clear_resolution(mut q: Query<&mut Resolution>) {
 }
 
 pub fn handle_collisions<T: Component>(
-    mut commands: Commands,
     map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
     mut dynamic_bodies: Query<
         (
-            Entity,
             &mut GlobalTransform,
             &mut Transform,
             &Collider,
             &mut Velocity,
             &mut Resolution,
+            &mut Collision,
         ),
-        (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
+        (With<DynamicBody>, With<layers::CollidesWith<T>>),
     >,
 ) {
-    for (entity, mut global_transform, mut transform, collider, mut velocity, mut resolution) in
-        dynamic_bodies.iter_mut()
+    for (
+        mut global_transform,
+        mut transform,
+        collider,
+        mut velocity,
+        mut resolution,
+        mut entity_collision,
+    ) in dynamic_bodies.iter_mut()
     {
-        let mut collision = false;
-
         let original_collider = &collider;
         let mut global_t = global_transform.compute_transform();
         let mut collider = collider.absolute(&global_t);
+        let mut collision = smallvec::SmallVec::new();
 
         for map in map_query.iter() {
             let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
@@ -444,9 +460,15 @@ pub fn handle_collisions<T: Component>(
                 d2.partial_cmp(&d1).unwrap_or(Ordering::Equal)
             });
 
-            for spatial::SpatialData { collider: sc, .. } in colliders.into_iter() {
+            for spatial::SpatialData {
+                entity,
+                collider: sc,
+                ..
+            } in colliders.into_iter()
+            {
                 if collider.collides_with(sc) {
-                    collision = true;
+                    collision.push(*entity);
+
                     let res = collider.resolution(sc);
                     resolution.0 += res;
 
@@ -462,14 +484,10 @@ pub fn handle_collisions<T: Component>(
             }
         }
 
+        entity_collision.0 = collision;
+
         // update global transform here so changes are observable in remaining collision systems.
         *global_transform = GlobalTransform::from(global_t);
-
-        if collision {
-            commands.entity(entity).insert(Collision);
-        } else {
-            commands.entity(entity).remove::<Collision>();
-        }
     }
 }
 

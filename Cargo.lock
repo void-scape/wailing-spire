@@ -4699,6 +4699,7 @@ dependencies = [
  "leafwing-input-manager",
  "rand",
  "serde",
+ "smallvec",
 ]
 
 [[package]]

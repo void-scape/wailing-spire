@@ -10,8 +10,10 @@ use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
 use physics::{
     gravity::Gravity,
+    layers,
     spatial::{SpatialHash, StaticBodyData},
 };
+use player::{health::Dead, Player};
 use spire::*;
 
 mod animation;
@@ -20,6 +22,7 @@ mod entities;
 mod map;
 mod physics;
 mod player;
+mod spikes;
 mod spire;
 
 const WIDTH: f32 = 384.;
@@ -39,17 +42,19 @@ fn main() {
             enemies::EnemyPlugin,
             bevy_tween::DefaultTweenPlugins,
             entities::EntityPlugin,
+            spikes::SpikePlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {
             SpatialHash::<StaticBodyData>::new(32.)
         })
+        .register_required_components::<LevelTileSets, layers::Wall>()
         .insert_resource(GlobalVolume::new(0.5))
         .insert_resource(Gravity(Vec2::NEG_Y * 12.))
         .insert_resource(ClearColor(srgb_from_hex(0x0d001a)))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
-        .add_systems(Update, despawn)
+        .add_systems(Last, reset)
         .run();
 }
 
@@ -84,19 +89,34 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
             // Spire2Level,
             SpireEndLevel,
         ))),
-        AudioPlayer::new(server.load("audio/music/foreign.wav")),
+    ));
+
+    commands.spawn((
+        AudioPlayer::new(server.load("audio/music/ambience.wav")),
         PlaybackSettings::LOOP,
     ));
 }
 
-fn despawn(mut reader: EventReader<KeyboardInput>, loader: Option<Single<&mut LevelLoader>>) {
-    if reader
-        .read()
-        .any(|i| !i.repeat && i.key_code == KeyCode::KeyR && i.state == ButtonState::Pressed)
-    {
-        if let Some(mut loader) = loader {
-            println!("despawning right");
-            loader.despawn(RightLevel::uid());
-        }
+fn reset(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    world: Query<Entity, With<bevy_ldtk_scene::World>>,
+    player: Query<&Dead, With<Player>>,
+) {
+    if !player.is_empty() {
+        let entity = world.single();
+        commands.entity(entity).despawn_recursive();
+        commands.spawn((
+            HotWorld(server.load("ldtk/spire.ldtk")),
+            World(server.load("ldtk/spire.ron")),
+            // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
+            // LevelLoader::levels_with_offset(map, Vec2::ZERO),
+            LevelLoader::levels(Stack((
+                SpireStartLevel,
+                // Spire1Level,
+                // Spire2Level,
+                SpireEndLevel,
+            ))),
+        ));
     }
 }
