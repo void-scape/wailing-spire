@@ -1,6 +1,7 @@
 use super::{
     collision::Collider,
-    collision::CollidesWith,
+    layers::TriggersWith,
+    prelude::CollidesWith,
     spatial::{SpatialData, SpatialHash},
 };
 use bevy::{prelude::*, utils::hashbrown::HashMap};
@@ -8,14 +9,10 @@ use bevy::{prelude::*, utils::hashbrown::HashMap};
 /// Marks an entity as a [`TriggerEvent`] source.
 ///
 /// Can exist in combination with a [`StaticBody`] or [`DynamicBody`].
+///
+/// Will trigger with any [`TriggersWith`] layer present in the entity.
 #[derive(Debug, Default, Clone, Copy, Component)]
-#[require(TriggerLayer)]
 pub struct Trigger(pub Collider);
-
-/// Both the [`Trigger`] and the `flipper` need to have the same [`TriggerLayer`] for a
-/// [`TriggerEvent`] to be emitted.
-#[derive(Debug, Default, Clone, Copy, Component)]
-pub struct TriggerLayer(pub usize);
 
 /// In the case of trigger triggers trigger, two triggers will each trigger, both triggering the
 /// other trigger.
@@ -25,90 +22,89 @@ pub struct TriggerEvent {
     pub target: Entity,
 }
 
-#[derive(Default, Resource)]
-pub struct TriggerLayerRegistry(Vec<usize>);
-
-pub fn register_trigger_layers(
-    layers: Query<&TriggerLayer, Added<TriggerLayer>>,
-    mut registry: ResMut<TriggerLayerRegistry>,
-) {
-    for layer in layers.iter() {
-        if !registry.0.contains(&layer.0) {
-            registry.0.push(layer.0);
-        }
-    }
+/// Fires when a trigger enters the target entity.
+///
+/// Uses the [`TriggerEvent`] internally.
+#[derive(Debug, Clone, Copy, Event)]
+pub struct TriggerEnter {
+    pub trigger: Entity,
+    pub target: Entity,
 }
 
-pub fn handle_triggers(
-    triggers: Query<(Entity, &GlobalTransform, &Trigger, &TriggerLayer)>,
-    dynamic_bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggerLayer)>,
-    layer_registry: Res<TriggerLayerRegistry>,
-    mut writer: EventWriter<TriggerEvent>,
+/// Fires when a trigger exits the target entity.
+///
+/// Uses the [`TriggerEvent`] internally.
+#[derive(Debug, Clone, Copy, Event)]
+pub struct TriggerExit {
+    pub trigger: Entity,
+    pub target: Entity,
+}
+
+pub fn emit_trigger_states(
+    mut enter: EventWriter<TriggerEnter>,
+    mut exit: EventWriter<TriggerExit>,
+    mut reader: EventReader<TriggerEvent>,
+    mut active: Local<HashMap<Entity, smallvec::SmallVec<[Entity; 4]>>>,
 ) {
-    // TODO: write better code
-    let mut event_hash: HashMap<(Entity, Entity), ()> = HashMap::default();
+    let events = reader.read().collect::<Vec<_>>();
 
-    for layer in layer_registry.0.iter() {
-        let layer_triggers = triggers
-            .iter()
-            .filter(|(_, _, _, l)| l.0 == *layer)
-            .collect::<Vec<_>>();
-
-        let trigger_map = SpatialHash::new_with(
-            64.,
-            layer_triggers
-                .iter()
-                .map(|(e, t, tg, _)| SpatialData::from_entity(*e, t, &tg.0, ())),
-        );
-
-        for (entity, transform, trigger, _) in layer_triggers.iter() {
-            let collider = trigger.0.global_absolute(transform);
-
-            for SpatialData {
-                entity: e,
-                collider: c,
-                ..
-            } in trigger_map.nearby_objects(&collider.position())
-            {
-                if *e != *entity && collider.collides_with(c) {
-                    event_hash.insert((*entity, *e), ());
-                    //writer.send(TriggerEvent {
-                    //    trigger: *entity,
-                    //    target: *e,
-                    //});
-                }
-            }
-        }
-
-        let dynamic_body_map = SpatialHash::new_with(
-            64.,
-            dynamic_bodies
-                .iter()
-                .filter(|(_, _, _, l)| l.0 == *layer)
-                .map(|(e, t, c, _)| SpatialData::from_entity(e, t, c, ())),
-        );
-
-        for (entity, transform, trigger, _) in layer_triggers.iter() {
-            let collider = trigger.0.global_absolute(transform);
-
-            for SpatialData {
-                entity: e,
-                collider: c,
-                ..
-            } in dynamic_body_map.nearby_objects(&collider.position())
-            {
-                if collider.collides_with(c) {
-                    event_hash.insert((*entity, *e), ());
-                    //writer.send(TriggerEvent {
-                    //    trigger: *entity,
-                    //    target: *e,
-                    //});
-                }
-            }
+    for event in events.iter() {
+        let entry = active.entry(event.trigger).or_default();
+        if !entry.contains(&event.target) {
+            enter.send(TriggerEnter {
+                trigger: event.trigger,
+                target: event.target,
+            });
+            entry.push(event.target);
         }
     }
 
-    for (trigger, target) in event_hash.into_keys() {
-        writer.send(TriggerEvent { trigger, target });
+    active.retain(|entity, targets| {
+        if events
+            .iter()
+            .any(|ev| ev.trigger == *entity && targets.contains(&ev.target))
+        {
+            true
+        } else {
+            for target in targets.iter() {
+                exit.send(TriggerExit {
+                    trigger: *entity,
+                    target: *target,
+                });
+            }
+
+            false
+        }
+    });
+}
+
+pub fn handle_triggers<T: Component>(
+    triggers: Query<(Entity, &GlobalTransform, &Trigger, &TriggersWith<T>)>,
+    bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggersWith<T>)>,
+    mut writer: EventWriter<TriggerEvent>,
+) {
+    let dynamic_body_map = SpatialHash::new_with(
+        64.,
+        bodies
+            .iter()
+            .map(|(e, t, c, _)| SpatialData::from_entity(e, t, c, ())),
+    );
+
+    for (entity, transform, trigger, _) in triggers.iter() {
+        let collider = trigger.0.global_absolute(transform);
+
+        for SpatialData {
+            entity: e,
+            collider: c,
+            ..
+        } in dynamic_body_map.nearby_objects(&collider.position())
+        {
+            if *e != entity && collider.collides_with(c) {
+                writer.send(TriggerEvent {
+                    trigger: entity,
+                    target: *e,
+                });
+            }
+        }
     }
 }

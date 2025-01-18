@@ -1,7 +1,7 @@
 use bevy::app::FixedMainScheduleOrder;
 use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
-use layers::RegisterCollisionLayer;
+use layers::RegisterPhysicsLayer;
 
 pub mod collision;
 pub mod debug;
@@ -48,12 +48,11 @@ impl Plugin for PhysicsPlugin {
             .register_grounded_layer::<layers::Wall>()
             .register_brushing_layer::<layers::Wall>();
 
-        // app.register_required_components::<spatial::SpatialHash<spatial::StaticBodyData>, layers::Wall>();
-
         app.add_plugins(Wireframe2dPlugin)
             .add_event::<trigger::TriggerEvent>()
+            .add_event::<trigger::TriggerEnter>()
+            .add_event::<trigger::TriggerExit>()
             .insert_resource(TimeScale(1.))
-            .insert_resource(trigger::TriggerLayerRegistry::default())
             .insert_resource(debug::ShowCollision(false))
             .add_systems(Update, collision::build_tile_set_colliders)
             .add_systems(
@@ -72,7 +71,7 @@ impl Plugin for PhysicsPlugin {
                         .before(PhysicsSystems::Collision)
                         .after(PhysicsSystems::Velocity),
                     (
-                        (trigger::register_trigger_layers, trigger::handle_triggers),
+                        trigger::emit_trigger_states,
                         debug::debug_display_collider_wireframe,
                         debug::update_show_collision,
                         (

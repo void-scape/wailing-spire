@@ -3,7 +3,7 @@ use crate::spikes;
 use crate::TILE_SIZE;
 use crate::{
     animation::{AnimationController, AnimationPlugin},
-    physics::prelude::*,
+    physics::{prelude::*, trigger::Trigger},
 };
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
@@ -16,6 +16,8 @@ use bevy_tween::prelude::*;
 use combo::Combo;
 use health::Health;
 use interpolate::sprite_color_to;
+use layers::RegisterPhysicsLayer;
+use layers::TriggersWith;
 use leafwing_input_manager::prelude::{
     GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
 };
@@ -38,7 +40,8 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.register_required_components::<crate::spire::Knight, Player>()
+        app.register_trigger_layer::<layers::Player>()
+            .register_required_components::<crate::spire::Knight, Player>()
             .add_event::<hook::HookTargetCollision>()
             .init_resource::<hook::ViableTargets>()
             .insert_resource(hook::ShowHook::default())
@@ -102,7 +105,7 @@ const DASH_DECAY: f32 = 2.;
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
-#[require(Velocity, Gravitational, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
+#[require(Velocity, Gravitational, DynamicBody, Collider(collider), Trigger(|| Trigger(collider())), TriggersWith<layers::Player>)]
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]

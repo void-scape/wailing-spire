@@ -8,12 +8,7 @@ use bevy::{
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
-use physics::{
-    gravity::Gravity,
-    layers,
-    spatial::{SpatialHash, StaticBodyData},
-    TimeScale,
-};
+use physics::{gravity::Gravity, layers, spatial::SpatialHash, TimeScale};
 use player::{health::Dead, OccludeHookTarget, Player};
 use spire::*;
 
@@ -46,9 +41,7 @@ fn main() {
             spikes::SpikePlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
-        .register_required_components_with::<LevelTileSets, SpatialHash<StaticBodyData>>(|| {
-            SpatialHash::<StaticBodyData>::new(32.)
-        })
+        .register_required_components_with::<LevelTileSets, SpatialHash>(|| SpatialHash::new(32.))
         .register_required_components::<LevelTileSets, layers::Wall>()
         .register_required_components::<LevelTileSets, OccludeHookTarget>()
         .insert_resource(GlobalVolume::new(0.5))

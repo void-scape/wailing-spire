@@ -1,6 +1,4 @@
-use super::{
-    collision::AbsoluteCollider, collision::Collider, collision::StaticBody, trigger::TriggerLayer,
-};
+use super::{collision::AbsoluteCollider, collision::Collider, collision::StaticBody};
 use bevy::{prelude::*, utils::hashbrown::HashMap};
 
 #[derive(Debug, Clone, Copy)]
@@ -26,7 +24,7 @@ impl<D> SpatialData<D> {
 }
 
 #[derive(Debug, Component)]
-pub struct SpatialHash<D> {
+pub struct SpatialHash<D = ()> {
     cell_size: f32,
     objects: HashMap<(i32, i32), Vec<SpatialData<D>>>,
 }
@@ -151,22 +149,16 @@ impl<D: Clone> SpatialHash<D> {
     }
 }
 
-pub type StaticBodyData = Option<TriggerLayer>;
-
 pub fn store_static_body_in_spatial_map(
-    mut hash: Query<(&mut SpatialHash<StaticBodyData>, &Children)>,
-    static_body: Query<
-        (Entity, &GlobalTransform, &Collider, Option<&TriggerLayer>),
-        Added<StaticBody>,
-    >,
+    mut hash: Query<(&mut SpatialHash, &Children)>,
+    static_body: Query<(Entity, &GlobalTransform, &Collider), Added<StaticBody>>,
 ) {
     for (mut map, children) in hash.iter_mut() {
         for child in children.iter() {
-            if let Ok((entity, global_transform, collider, trigger_layer)) = static_body.get(*child)
-            {
+            if let Ok((entity, global_transform, collider)) = static_body.get(*child) {
                 map.insert(SpatialData {
                     collider: collider.global_absolute(global_transform),
-                    data: trigger_layer.cloned(),
+                    data: (),
                     entity,
                 })
             }

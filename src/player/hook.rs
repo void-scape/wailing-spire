@@ -1,7 +1,4 @@
-use crate::{
-    physics::spatial::{SpatialHash, StaticBodyData},
-    TILE_SIZE,
-};
+use crate::{physics::spatial::SpatialHash, TILE_SIZE};
 
 use super::{health::Dead, Action, Collider, CollidesWith, Player, Velocity};
 use bevy::{prelude::*, sprite::Anchor};
@@ -95,7 +92,7 @@ pub(super) fn gather_viable_targets(
     targets: Query<(Entity, &GlobalTransform), With<HookTarget>>,
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
-    spatial_hash_query: Query<&SpatialHash<StaticBodyData>, With<OccludeHookTarget>>,
+    spatial_hash_query: Query<&SpatialHash, With<OccludeHookTarget>>,
 ) {
     viable.0.clear();
 

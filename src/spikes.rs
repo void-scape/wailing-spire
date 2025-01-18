@@ -1,8 +1,8 @@
 use crate::{
     physics::{
-        layers::RegisterCollisionLayer,
+        layers::RegisterPhysicsLayer,
         prelude::{Collider, Collision},
-        spatial::{SpatialData, SpatialHash, StaticBodyData},
+        spatial::{SpatialData, SpatialHash},
     },
     player::health::{Dead, Health},
     spire, TILE_SIZE,
@@ -26,7 +26,7 @@ fn build_spikes(
     mut commands: Commands,
     spike_query: Query<(Entity, &GlobalTransform), Added<spire::TileSpike>>,
 ) {
-    let mut map: SpatialHash<StaticBodyData> = SpatialHash::new(TILE_SIZE * 2.);
+    let mut map = SpatialHash::new(TILE_SIZE * 2.);
 
     let height = 4.;
     for (_, transform) in spike_query.iter() {
@@ -40,7 +40,7 @@ fn build_spikes(
             .id();
         map.insert(SpatialData {
             collider: collider.global_absolute(transform),
-            data: None,
+            data: (),
             entity,
         })
     }

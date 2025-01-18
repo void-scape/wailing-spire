@@ -1,4 +1,7 @@
-use super::{hook::HookTargetCollision, Action, Collision, Player, PlayerAnimation};
+use super::{
+    hook::HookTargetCollision, Action, Collision, Player, PlayerAnimation, TriggerEnter,
+    TriggerEvent,
+};
 use crate::animation::AnimationController;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -94,28 +97,36 @@ pub(super) fn death(
 pub(super) fn hook_collision(
     mut player: Query<
         (
-            // &Collision,
+            Entity,
             &mut Health,
             &mut AnimationController<PlayerAnimation>,
         ),
         With<Player>,
     >,
-    mut reader: EventReader<HookTargetCollision>,
     damage_query: Query<&HookedDamage>,
-    active_collisions: Local<Vec<Entity>>,
+    mut enter: EventReader<TriggerEnter>,
 ) {
-    let Ok((mut health, mut animations)) = player.get_single_mut() else {
+    let Ok((entity, mut health, mut animations)) = player.get_single_mut() else {
         return;
     };
 
-    for _ in reader
-        .read()
-        .filter(|c| c.shield_down() && damage_query.get(c.entity()).is_ok())
-    {
-        // TODO: trigger collision for health + trigger must leave before you get hit again +
-        // kickback
-        health.damage(1);
-        animations.set_animation_one_shot(PlayerAnimation::Hit);
-        println!("Ouch! [{}/{}]", health.current(), health.max());
+    // TODO: no damage on shield, knockback, slow time (`TimeScale`)
+    for event in enter.read() {
+        if event.trigger == entity {
+            health.damage(1);
+            animations.set_animation_one_shot(PlayerAnimation::Hit);
+            println!("Ouch! [{}/{}]", health.current(), health.max());
+        }
     }
+
+    // for _ in reader
+    //     .read()
+    //     .filter(|c| c.shield_down() && damage_query.get(c.entity()).is_ok())
+    // {
+    //     // TODO: trigger collision for health + trigger must leave before you get hit again +
+    //     // kickback
+    //     health.damage(1);
+    //     animations.set_animation_one_shot(PlayerAnimation::Hit);
+    //     println!("Ouch! [{}/{}]", health.current(), health.max());
+    // }
 }

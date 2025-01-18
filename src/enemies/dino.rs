@@ -1,13 +1,14 @@
 use crate::player;
 use crate::{animation::AnimationController, physics::prelude::*, TILE_SIZE};
 use bevy::prelude::*;
+use layers::TriggersWith;
 use rand::Rng;
 
 const SPEED: f32 = 50.;
 
 #[derive(Default, Component)]
 #[require(AnimationController<DinoAnimation>(animation_controller))]
-#[require(Velocity(velocity), DynamicBody, Collider(collider))]
+#[require(Velocity(velocity), DynamicBody, Collider(collider), TriggersWith<layers::Player>)]
 #[require(layers::CollidesWith<layers::Wall>)]
 #[require(player::HookTarget, player::ComboCollision, player::HookedDamage)]
 #[require(super::DespawnHooked)]

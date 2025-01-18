@@ -11,7 +11,7 @@ use bevy::{
     prelude::*,
     utils::hashbrown::{HashMap, HashSet},
 };
-use spatial::{SpatialHash, StaticBodyData};
+use spatial::SpatialHash;
 use std::{cmp::Ordering, marker::PhantomData};
 
 /// Contains a list of entities which a [`DynamicBody`] with [`layers::CollidesWith<T>`] collided
@@ -64,11 +64,10 @@ fn remove_static_body(mut world: DeferredWorld, entity: Entity, _: ComponentId) 
         let collider = world.get::<Collider>(entity).unwrap();
         let collider = collider.global_absolute(global_t);
 
-        if let Some(mut hash) = world.get_mut::<SpatialHash<StaticBodyData>>(parent.get()) {
+        if let Some(mut hash) = world.get_mut::<SpatialHash>(parent.get()) {
             hash.remove(collider);
         }
     }
-    // SpatialHash<StaticBodyData>
 }
 
 #[derive(Debug, Default, Clone, Copy, Component)]
@@ -429,7 +428,7 @@ pub fn clear_resolution(mut q: Query<&mut Resolution>) {
 }
 
 pub fn handle_collisions<T: Component>(
-    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    map_query: Query<&SpatialHash, With<T>>,
     mut dynamic_bodies: Query<
         (
             &mut GlobalTransform,
@@ -472,10 +471,10 @@ pub fn handle_collisions<T: Component>(
                 ..
             } in colliders.into_iter()
             {
-                if collider.collides_with(sc) {
+                if collider.collides_with(&sc) {
                     collision.push(*entity);
 
-                    let res = collider.resolution(sc);
+                    let res = collider.resolution(&sc);
                     resolution.0 += res;
 
                     let res = res.extend(0.0);
@@ -499,7 +498,7 @@ pub fn handle_collisions<T: Component>(
 
 pub fn update_grounded<T: Component>(
     mut commands: Commands,
-    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    map_query: Query<&SpatialHash, With<T>>,
     mut dynamic_bodies: Query<
         (Entity, &GlobalTransform, &Collider, &Velocity),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
@@ -548,7 +547,7 @@ pub fn update_grounded<T: Component>(
 
 pub fn update_brushing<T: Component>(
     mut commands: Commands,
-    map_query: Query<&SpatialHash<StaticBodyData>, With<T>>,
+    map_query: Query<&SpatialHash, With<T>>,
     mut dynamic_bodies: Query<
         (Entity, &GlobalTransform, &Collider, &Velocity),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
