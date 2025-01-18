@@ -12,6 +12,7 @@ use physics::{
     gravity::Gravity,
     layers,
     spatial::{SpatialHash, StaticBodyData},
+    TimeScale,
 };
 use player::{health::Dead, OccludeHookTarget, Player};
 use spire::*;

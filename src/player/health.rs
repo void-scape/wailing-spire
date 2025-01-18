@@ -1,4 +1,4 @@
-use super::{hook::HookTargetCollision, Action, Player, PlayerAnimation};
+use super::{hook::HookTargetCollision, Action, Collision, Player, PlayerAnimation};
 use crate::animation::AnimationController;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -92,9 +92,17 @@ pub(super) fn death(
 }
 
 pub(super) fn hook_collision(
-    mut player: Query<(&mut Health, &mut AnimationController<PlayerAnimation>), With<Player>>,
+    mut player: Query<
+        (
+            // &Collision,
+            &mut Health,
+            &mut AnimationController<PlayerAnimation>,
+        ),
+        With<Player>,
+    >,
     mut reader: EventReader<HookTargetCollision>,
     damage_query: Query<&HookedDamage>,
+    active_collisions: Local<Vec<Entity>>,
 ) {
     let Ok((mut health, mut animations)) = player.get_single_mut() else {
         return;

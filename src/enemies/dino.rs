@@ -43,19 +43,21 @@ fn collider() -> Collider {
 }
 
 pub fn flip_dino(
-    mut dino_query: Query<(&mut Sprite, &mut Velocity), (With<Dino>, With<Collision>)>,
+    mut dino_query: Query<(&mut Sprite, &mut Velocity, &Collision<layers::Wall>), With<Dino>>,
 ) {
-    for (mut sprite, mut vel) in dino_query.iter_mut() {
-        match vel.0 {
-            Dino::LEFT => {
-                *vel = Velocity(Dino::RIGHT);
-                sprite.flip_x = false;
+    for (mut sprite, mut vel, collision) in dino_query.iter_mut() {
+        if !collision.entities().is_empty() {
+            match vel.0 {
+                Dino::LEFT => {
+                    *vel = Velocity(Dino::RIGHT);
+                    sprite.flip_x = false;
+                }
+                Dino::RIGHT => {
+                    *vel = Velocity(Dino::LEFT);
+                    sprite.flip_x = true;
+                }
+                _ => unreachable!(),
             }
-            Dino::RIGHT => {
-                *vel = Velocity(Dino::LEFT);
-                sprite.flip_x = true;
-            }
-            _ => unreachable!(),
         }
     }
 }

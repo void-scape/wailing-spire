@@ -1,3 +1,4 @@
+use super::prelude::Collision;
 use bevy::prelude::*;
 use core::marker::PhantomData;
 
@@ -5,9 +6,10 @@ use core::marker::PhantomData;
 /// to enable collisions between the dynamic body and the
 /// target static or dynamic bodies.
 #[derive(Component, Debug)]
-pub struct CollidesWith<T>(PhantomData<T>);
+#[require(Collision<T>)]
+pub struct CollidesWith<T: Component>(PhantomData<T>);
 
-impl<T> Default for CollidesWith<T> {
+impl<T: Component> Default for CollidesWith<T> {
     fn default() -> Self {
         Self(PhantomData)
     }

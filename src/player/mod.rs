@@ -1,3 +1,4 @@
+use crate::physics::TimeScale;
 use crate::spikes;
 use crate::TILE_SIZE;
 use crate::{
@@ -102,15 +103,14 @@ const DASH_DECAY: f32 = 2.;
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(Velocity, Gravitational, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
-#[require(Friction(|| Friction(0.)), MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
+#[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
 #[require(BrushingMove)]
-#[require(layers::CollidesWith<layers::Wall>)]
+#[require(layers::CollidesWith<layers::Wall>, layers::CollidesWith<spikes::Spike>)]
 #[require(layers::Player)]
 #[require(Combo)]
 #[require(Health(|| Health::PLAYER))]
-#[require(layers::CollidesWith<spikes::Spike>)]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -269,7 +269,7 @@ fn homing_movement(
             &Collider,
             &mut Velocity,
             &Resolution,
-            Option<&Collision>,
+            Option<&Collision<layers::Wall>>,
         ),
         With<Player>,
     >,
@@ -326,6 +326,7 @@ fn manage_brushing_move(
         >,
     >,
     time: Res<Time>,
+    scale: Res<TimeScale>,
 ) {
     let Some((action, mut brushing_move, grounded, brushing_left, brushing_right)) =
         player.map(|p| p.into_inner())
@@ -340,7 +341,9 @@ fn manage_brushing_move(
         && (brushing_left.is_some() && direction == Direction::Right
             || brushing_right.is_some() && direction == Direction::Left)
     {
-        brushing_move.0.tick(time.delta());
+        brushing_move
+            .0
+            .tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
     } else {
         brushing_move.0.reset();
     }
@@ -465,13 +468,14 @@ fn jump(
         >,
     >,
     time: Res<Time>,
+    scale: Res<TimeScale>,
     mut timer: Local<Option<Timer>>,
 ) {
     if let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) {
         let timer =
             timer.get_or_insert_with(|| Timer::from_seconds(JUMP_MAX_DURATION, TimerMode::Once));
 
-        timer.tick(time.delta());
+        timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
         if timer.finished()
             || action_state
                 .get_pressed()
@@ -508,6 +512,7 @@ fn dash(
     >,
     mut reader: EventReader<HookTargetCollision>,
     time: Res<Time>,
+    scale: Res<TimeScale>,
     mut timer: Local<Option<Timer>>,
     mut spawn_ghost_timer: Local<Option<Timer>>,
     mut ghost_z: Local<usize>,
@@ -538,7 +543,7 @@ fn dash(
 
                 let dash_timer = timer
                     .get_or_insert_with(|| Timer::from_seconds(DASH_DURATION, TimerMode::Once));
-                dash_timer.tick(time.delta());
+                dash_timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
                 if dash_timer.finished() {
                     *dash_reset = false;
                     commands.entity(entity).remove::<Dashing>();
@@ -553,7 +558,7 @@ fn dash(
                 let ghost_timer = spawn_ghost_timer.get_or_insert_with(|| {
                     Timer::from_seconds(DASH_DURATION / 5., TimerMode::Repeating)
                 });
-                ghost_timer.tick(time.delta());
+                ghost_timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
                 if ghost_timer.just_finished() {
                     let ghost = commands
                         .spawn((

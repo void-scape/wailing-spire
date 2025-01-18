@@ -55,18 +55,16 @@ fn build_spikes(
 }
 
 fn kill_player(
-    mut player: Query<(&mut Health, &Collision), (With<crate::player::Player>, Without<Dead>)>,
-    spike_query: Query<&Spike>,
+    mut player: Query<
+        (&mut Health, &Collision<Spike>),
+        (With<crate::player::Player>, Without<Dead>),
+    >,
 ) {
     let Ok((mut health, collision)) = player.get_single_mut() else {
         return;
     };
 
-    if collision
-        .entities()
-        .iter()
-        .any(|e| spike_query.get(*e).is_ok())
-    {
+    if !collision.entities().is_empty() {
         health.damage_all();
     }
 }

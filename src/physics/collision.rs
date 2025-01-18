@@ -12,14 +12,20 @@ use bevy::{
     utils::hashbrown::{HashMap, HashSet},
 };
 use spatial::{SpatialHash, StaticBodyData};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, marker::PhantomData};
 
 /// Contains a list of entities which a [`DynamicBody`] with [`layers::CollidesWith<T>`] collided
-/// with this frame.
-#[derive(Default, Component)]
-pub struct Collision(smallvec::SmallVec<[Entity; 4]>);
+/// with this frame for the layer `T`.
+#[derive(Component)]
+pub struct Collision<T>(smallvec::SmallVec<[Entity; 4]>, PhantomData<T>);
 
-impl Collision {
+impl<T> Default for Collision<T> {
+    fn default() -> Self {
+        Self(smallvec::SmallVec::default(), PhantomData)
+    }
+}
+
+impl<T> Collision<T> {
     pub fn entities(&self) -> &[Entity] {
         &self.0
     }
@@ -76,7 +82,7 @@ pub struct Massive;
 /// To check for collisions, first convert this enum into an [`AbsoluteCollider`]
 /// with [`Collider::absolute`].
 #[derive(Debug, Clone, Copy, PartialEq, Component)]
-#[require(Resolution, Collision)]
+#[require(Resolution)]
 pub enum Collider {
     Rect(RectCollider),
     Circle(CircleCollider),
@@ -431,7 +437,7 @@ pub fn handle_collisions<T: Component>(
             &Collider,
             &mut Velocity,
             &mut Resolution,
-            &mut Collision,
+            &mut Collision<T>,
         ),
         (With<DynamicBody>, With<layers::CollidesWith<T>>),
     >,

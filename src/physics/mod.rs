@@ -20,6 +20,9 @@ pub mod prelude {
     pub use super::velocity::*;
 }
 
+#[derive(Debug, Resource)]
+pub struct TimeScale(pub f32);
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ScheduleLabel)]
 pub struct Physics;
 
@@ -49,6 +52,7 @@ impl Plugin for PhysicsPlugin {
 
         app.add_plugins(Wireframe2dPlugin)
             .add_event::<trigger::TriggerEvent>()
+            .insert_resource(TimeScale(1.))
             .insert_resource(trigger::TriggerLayerRegistry::default())
             .insert_resource(debug::ShowCollision(false))
             .add_systems(Update, collision::build_tile_set_colliders)
