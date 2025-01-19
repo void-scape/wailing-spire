@@ -59,7 +59,7 @@ impl TargetScores {
             + self.angle
             + self.selector.familiarity
             + self.selector.recency
-            + self.selector.stability
+            + self.selector.stability * 2.0
             + self.distance_above_player
     }
 }
@@ -211,16 +211,22 @@ pub(super) fn trigger_hook(
 }
 
 pub(super) fn spawn_selectors(max: Res<MaxSelectors>, mut commands: Commands) {
-    for i in 0..max.0 {
-        let progress = (i as f32 / max.0 as f32) * std::f32::consts::TAU;
-        let r = progress.sin() * 0.5 + 0.5;
-        let g = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
-        let b = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
+    let colors = [
+        Color::srgb(1.0, 1.0, 0.0),
+        Color::srgb(0.0, 1.0, 0.0),
+        Color::srgb(0.0, 0.0, 1.0),
+        Color::srgb(1.0, 0.0, 0.0),
+    ];
 
-        commands.spawn((
-            Sprite::from_color(Color::srgb(r.sin(), g.sin(), b.sin()), Vec2::new(6.0, 6.0)),
-            Selector(i),
-        ));
+    for i in 0..max.0 {
+        // let progress = (i as f32 / max.0 as f32) * std::f32::consts::TAU;
+        // let r = progress.sin() * 0.5 + 0.5;
+        // let g = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
+        // let b = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
+        // let color = Color::srgb(r, g, b);
+        let color = colors[i % colors.len()];
+
+        commands.spawn((Sprite::from_color(color, Vec2::new(6.0, 6.0)), Selector(i)));
     }
 }
 
