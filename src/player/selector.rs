@@ -1,5 +1,7 @@
-use super::{hook::ViableTargets, Action, Collider, Homing, Player, Velocity};
-use bevy::prelude::*;
+use super::{
+    hook::ViableTargets, input::XBOX_SELECTOR_MAP, Action, Collider, Homing, Player, Velocity,
+};
+use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 use itertools::Itertools;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -63,6 +65,9 @@ impl TargetScores {
             + self.distance_above_player
     }
 }
+
+#[derive(Resource)]
+pub(super) struct ActiveSelectors(Vec<Entity>);
 
 pub(super) fn calculate_selectors(
     collider_targets: Query<(Entity, &GlobalTransform, &Collider)>,
@@ -213,42 +218,176 @@ pub(super) fn trigger_hook(
 }
 
 pub(super) fn spawn_selectors(max: Res<MaxSelectors>, mut commands: Commands) {
-    let colors = [
-        Color::srgb(1.0, 1.0, 0.0),
-        Color::srgb(0.0, 1.0, 0.0),
-        Color::srgb(0.0, 0.0, 1.0),
-        Color::srgb(1.0, 0.0, 0.0),
-    ];
-
     for i in 0..max.0 {
-        // let progress = (i as f32 / max.0 as f32) * std::f32::consts::TAU;
-        // let r = progress.sin() * 0.5 + 0.5;
-        // let g = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
-        // let b = (progress + std::f32::consts::PI * (1.0 / 3.0)).sin() * 0.5 + 0.5;
-        // let color = Color::srgb(r, g, b);
-        let color = colors[i % colors.len()];
-
-        commands.spawn((Sprite::from_color(color, Vec2::new(6.0, 6.0)), Selector(i)));
+        commands.spawn(Selector(i));
     }
 }
 
-pub(super) fn move_selectors(
-    mut sprites: Query<(&Selector, &SelectorInfo, &mut Transform)>,
-    targets: Query<(&GlobalTransform, &Collider), Without<Selector>>,
+#[derive(Resource)]
+pub(super) struct SelectorTextureCache {
+    map: HashMap<InputType, SelectorTexture>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum InputType {
+    XBox,
+    Keyboard,
+}
+
+#[derive(Clone)]
+struct SelectorTexture {
+    image: Handle<Image>,
+    atlas_map: HashMap<Selector, TextureAtlas>,
+}
+
+impl SelectorTexture {
+    pub fn sprite(&self, selector: &Selector) -> Sprite {
+        Sprite {
+            image: self.image.clone(),
+            anchor: Anchor::TopLeft,
+            texture_atlas: Some(
+                self.atlas_map
+                    .get(selector)
+                    .unwrap_or_else(|| panic!("unregistered selector {:?}", selector))
+                    .clone(),
+            ),
+            ..Default::default()
+        }
+    }
+}
+
+pub(super) fn insert_texture_cache(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    mut atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    for (_, info, mut sprite_trans) in sprites.iter_mut() {
-        let Some(target_entity) = info.target else {
-            sprite_trans.translation.x = -1000.0;
-            return;
+    let mut map = HashMap::default();
+
+    map.insert(
+        InputType::XBox,
+        SelectorTexture {
+            image: server.load("sprites/xbox_selector.png"),
+            atlas_map: {
+                let layout = atlases.add(TextureAtlasLayout::from_grid(
+                    UVec2::splat(32),
+                    5,
+                    1,
+                    None,
+                    None,
+                ));
+
+                let mut atlas_map = HashMap::default();
+                for (selector, button) in XBOX_SELECTOR_MAP.iter() {
+                    let index = match button {
+                        GamepadButton::South => 1,
+                        GamepadButton::East => 2,
+                        GamepadButton::West => 3,
+                        GamepadButton::North => 4,
+                        _ => unreachable!(),
+                    };
+
+                    atlas_map.insert(
+                        *selector,
+                        TextureAtlas {
+                            layout: layout.clone(),
+                            index,
+                        },
+                    );
+                }
+
+                atlas_map
+            },
+        },
+    );
+
+    commands.insert_resource(SelectorTextureCache { map });
+}
+
+/// Selector sprite entity.
+///
+/// Child of a [`SelectorInfo`] `target`.
+#[derive(Component)]
+pub(super) struct SelectorSprite(Selector);
+
+pub(super) fn add_selectors(
+    mut commands: Commands,
+    selector_query: Query<(&Selector, &SelectorInfo)>,
+    mut selector_sprites: Query<(Entity, &Parent, &mut SelectorSprite)>,
+    sprite_query: Query<(Entity, &Sprite)>,
+    sprites: Res<Assets<Image>>,
+    atlases: Res<Assets<TextureAtlasLayout>>,
+    textures: Res<SelectorTextureCache>,
+) {
+    // despawn old sprites
+    for (entity, parent, _) in &selector_sprites {
+        if !selector_query
+            .iter()
+            .any(|(_, info)| info.target.is_some_and(|t| t == parent.get()))
+        {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    let mut populated_selectors = Vec::with_capacity(8);
+
+    for (_, parent, mut selector) in &mut selector_sprites {
+        if let Some((i, (s, _))) = selector_query
+            .iter()
+            .enumerate()
+            .find(|(_, (_, info))| info.target.is_some_and(|t| t == parent.get()))
+        {
+            populated_selectors.push(i);
+
+            if selector.0 != *s {
+                selector.0 = *s;
+            }
+        }
+    }
+
+    let selector_texture = textures.map.get(&InputType::XBox).unwrap();
+
+    // spawn new sprites
+    for (_, (selector, info)) in selector_query
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !populated_selectors.contains(i))
+        .filter(|(_, (_, info))| info.target.is_some())
+    {
+        let target = info.target.unwrap();
+        let Ok((entity, sprite)) = sprite_query.get(target) else {
+            // todo!("non sprite fallback");
+            warn!("selector on entity with no sprite??");
+            continue;
         };
 
-        if let Ok((target, collider)) = targets.get(target_entity) {
-            let center = collider.global_absolute(target).center();
-            sprite_trans.translation.x = center.x;
-            sprite_trans.translation.y = center.y + 12.0;
-            sprite_trans.translation.z = 10.0;
+        if let Some(sprite_atlas) = &sprite.texture_atlas {
+            if let Some(atlas) = atlases.get(&sprite_atlas.layout) {
+                if let Some(rect) = atlas.textures.get(sprite_atlas.index) {
+                    let x = rect.width() as f32 / 2. - 16.;
+                    if let Some(mut entity) = commands.get_entity(entity) {
+                        entity.with_child((
+                            SelectorSprite(*selector),
+                            selector_texture.sprite(selector),
+                            Transform::from_xyz(x, 16., 0.),
+                        ));
+                    }
+                } else {
+                    todo!("atlas not loaded fallback");
+                }
+            } else {
+                todo!("invalid index fallback");
+            }
+        } else if let Some(image) = sprites.get(&sprite.image) {
+            let x = image.width() as f32 / 2. - 16.;
+            if let Some(mut entity) = commands.get_entity(entity) {
+                entity.with_child((
+                    SelectorSprite(*selector),
+                    selector_texture.sprite(selector),
+                    Transform::from_xyz(x, 16., 0.),
+                ));
+            }
         } else {
-            sprite_trans.translation.x = -1000.0;
+            todo!("sprite not loaded fallback");
         }
     }
 }

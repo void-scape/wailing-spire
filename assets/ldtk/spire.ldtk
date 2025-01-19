@@ -830,7 +830,7 @@
 		{
 			"identifier": "WallHook",
 			"uid": 126,
-			"tags": [],
+			"tags": ["atlas"],
 			"exportToToc": false,
 			"allowOutOfBounds": false,
 			"doc": null,
@@ -982,23 +982,23 @@
 			}
 		},
 		{
-			"__cWid": 2,
-			"__cHei": 2,
+			"__cWid": 5,
+			"__cHei": 1,
 			"identifier": "WallHook",
 			"uid": 127,
 			"relPath": "../sprites/wall_hook.png",
 			"embedAtlas": null,
-			"pxWid": 32,
+			"pxWid": 160,
 			"pxHei": 32,
-			"tileGridSize": 16,
+			"tileGridSize": 32,
 			"spacing": 0,
 			"padding": 0,
-			"tags": [],
+			"tags": ["atlas"],
 			"tagsSourceEnumUid": null,
 			"enumTags": [],
 			"customData": [],
 			"savedSelections": [],
-			"cachedPixelData": { "opaqueTiles": "0000", "averageColors": "2366235634673366" }
+			"cachedPixelData": { "opaqueTiles": "00000", "averageColors": "33133343351334343543" }
 		}
 	], "enums": [
 		{ "identifier": "Tile", "uid": 66, "values": [ { "id": "Solid", "tileRect": null, "color": 12470831 }, { "id": "Spike", "tileRect": null, "color": 14120515 } ], "iconTilesetUid": null, "externalRelPath": null, "externalFileChecksum": null, "tags": ["marker"] },
@@ -1027,7 +1027,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 21,
 					"__cHei": 21,
@@ -1468,7 +1468,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 21,
 					"__cHei": 21,
@@ -1850,7 +1850,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 21,
 					"__cHei": 21,
@@ -2254,7 +2254,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -2620,7 +2620,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -3031,7 +3031,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -3442,7 +3442,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -3853,7 +3853,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -4306,7 +4306,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -4759,7 +4759,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -5218,7 +5218,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -5725,7 +5725,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -6234,7 +6234,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -6853,7 +6853,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -7312,7 +7312,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -7830,7 +7830,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -8283,7 +8283,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -8784,7 +8784,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -9244,7 +9244,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 20,
 					"__cHei": 20,
@@ -9658,7 +9658,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 22,
 					"__cHei": 24,
@@ -10259,7 +10259,7 @@
 							"__identifier": "WallHook",
 							"__grid": [17,39],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#D77643",
 							"iid": "69bee2b0-c210-11ef-a651-c1bd159357da",
@@ -10275,7 +10275,7 @@
 							"__identifier": "WallHook",
 							"__grid": [3,31],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#D77643",
 							"iid": "6a577930-c210-11ef-a651-2b9f532b2aca",
@@ -10291,7 +10291,7 @@
 							"__identifier": "WallHook",
 							"__grid": [17,21],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#D77643",
 							"iid": "6b06f310-c210-11ef-a651-0b3d52c48a1f",
@@ -10307,7 +10307,7 @@
 							"__identifier": "WallHook",
 							"__grid": [3,5],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#D77643",
 							"iid": "6c0a3240-c210-11ef-a651-f1847bd01a24",
@@ -10939,7 +10939,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 22,
 					"__cHei": 7,
@@ -11041,7 +11041,7 @@
 							"__identifier": "WallHook",
 							"__grid": [13,5],
 							"__pivot": [0,0],
-							"__tags": [],
+							"__tags": ["atlas"],
 							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
 							"__smartColor": "#D77643",
 							"iid": "73e36950-c210-11ef-a651-419aaca7bfc7",
@@ -11255,7 +11255,7 @@
 			"fieldInstances": [],
 			"layerInstances": [
 				{
-					"__identifier": "Spikes",
+					"__identifier": "SpikesComposite",
 					"__type": "Tiles",
 					"__cWid": 22,
 					"__cHei": 24,

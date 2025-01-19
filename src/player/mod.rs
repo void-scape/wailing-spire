@@ -1,6 +1,4 @@
-use self::movement::Dashing;
 use self::movement::Homing;
-use self::movement::Jumping;
 use self::params::*;
 use crate::spikes;
 use crate::TILE_SIZE;
@@ -14,9 +12,6 @@ use combo::Combo;
 use health::Health;
 use layers::RegisterPhysicsLayer;
 use layers::TriggersWith;
-use leafwing_input_manager::prelude::{
-    GamepadStick, VirtualDPad, WithDualAxisProcessingPipelineExt,
-};
 use leafwing_input_manager::{
     plugin::InputManagerPlugin,
     prelude::{ActionState, InputMap},
@@ -29,6 +24,7 @@ mod camera;
 pub mod combo;
 pub mod health;
 pub mod hook;
+mod input;
 mod movement;
 mod params;
 mod selector;
@@ -56,7 +52,14 @@ impl Plugin for PlayerPlugin {
                 AnimationPlugin::<PlayerAnimation>::default(),
                 movement::MovementPlugin,
             ))
-            .add_systems(Startup, (hook::spawn_hook, selector::spawn_selectors))
+            .add_systems(
+                Startup,
+                (
+                    hook::spawn_hook,
+                    selector::spawn_selectors,
+                    selector::insert_texture_cache,
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -66,7 +69,6 @@ impl Plugin for PlayerPlugin {
                         hook::terminal_velocity,
                         hook::collision_hook,
                         selector::calculate_selectors,
-                        selector::move_selectors,
                         selector::trigger_hook,
                         combo::combo,
                     )
@@ -75,25 +77,30 @@ impl Plugin for PlayerPlugin {
                     health::death,
                     health::hook_collision,
                     hook::show_hook,
-                    (actions, direction).before(PlayerSystems::Movement),
+                    direction.before(PlayerSystems::Movement),
                     flip_sprite.after(PlayerSystems::Movement),
                 ),
             )
             .add_systems(
                 PostUpdate,
-                camera::move_camera.before(TransformSystem::TransformPropagate),
+                (
+                    selector::add_selectors,
+                    camera::move_camera.before(TransformSystem::TransformPropagate),
+                ),
             );
     }
 }
 
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
-#[require(ActionState<Action>, InputMap<Action>(input_map))]
+#[require(ActionState<Action>, InputMap<Action>(input::input_map))]
 #[require(Velocity, Gravitational, DynamicBody, Collider(collider), Trigger(|| Trigger(collider())), TriggersWith<layers::Player>)]
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
-#[require(layers::CollidesWith<layers::Wall>, layers::CollidesWith<spikes::Spike>)]
+#[require(layers::CollidesWith<layers::Wall>,
+    // layers::CollidesWith<spikes::Spike>
+)]
 #[require(layers::Player)]
 #[require(BrushingMove)]
 #[require(Combo)]
@@ -110,28 +117,6 @@ fn animation_controller() -> AnimationController<PlayerAnimation> {
             (PlayerAnimation::Death, (56, 60)),
         ],
     )
-}
-
-fn input_map() -> InputMap<Action> {
-    InputMap::new([
-        (Action::Jump, KeyCode::Space),
-        (Action::Interact, KeyCode::KeyE),
-        (Action::Dash, KeyCode::KeyC),
-    ])
-    .with(Action::Jump, GamepadButton::RightTrigger)
-    // .with(Action::Jump, GamepadButton::South)
-    .with(Action::Interact, GamepadButton::LeftTrigger)
-    // .with(Action::Dash, GamepadButton::West)
-    .with_dual_axis(
-        Action::Aim,
-        GamepadStick::RIGHT.with_deadzone_symmetric(0.3),
-    )
-    .with_dual_axis(Action::Run, GamepadStick::LEFT.with_deadzone_symmetric(0.3))
-    .with_dual_axis(Action::Run, VirtualDPad::wasd())
-    .with(Action::Hook(Selector(0)), GamepadButton::North)
-    .with(Action::Hook(Selector(1)), GamepadButton::South)
-    .with(Action::Hook(Selector(2)), GamepadButton::West)
-    .with(Action::Hook(Selector(3)), GamepadButton::East)
 }
 
 fn collider() -> Collider {
@@ -188,49 +173,6 @@ impl Direction {
                     Direction::Left
                 }
             }
-        }
-    }
-}
-
-fn actions(
-    mut commands: Commands,
-    player: Option<
-        Single<
-            (
-                Entity,
-                &ActionState<Action>,
-                &mut Velocity,
-                Option<&BrushingLeft>,
-                Option<&BrushingRight>,
-            ),
-            (With<Player>, Without<Homing>),
-        >,
-    >,
-) {
-    let Some((entity, action_state, mut velocity, brushing_left, brushing_right)) =
-        player.map(|p| p.into_inner())
-    else {
-        return;
-    };
-
-    let axis_pair = action_state.clamped_axis_pair(&Action::Run);
-    for action in action_state.get_just_pressed() {
-        match action {
-            Action::Jump => {
-                commands.entity(entity).insert(Jumping);
-
-                // if brushing_left.is_some() {
-                //     velocity.0.x += WALL_IMPULSE;
-                // } else if brushing_right.is_some() {
-                //     velocity.0.x -= WALL_IMPULSE;
-                // }
-            }
-            Action::Dash => {
-                commands
-                    .entity(entity)
-                    .insert(Dashing::new((axis_pair != Vec2::ZERO).then_some(axis_pair)));
-            }
-            _ => {}
         }
     }
 }

@@ -20,7 +20,7 @@ impl Plugin for MovementPlugin {
         app.add_systems(
             Update,
             (
-                air_strafe.before(brushing),
+                (start_jump, start_dash, air_strafe).before(brushing),
                 brushing,
                 (
                     wall_jump_impulse,
@@ -162,6 +162,26 @@ fn brushing(
 #[derive(Component)]
 pub struct Jumping;
 
+fn start_jump(
+    mut commands: Commands,
+    player: Option<
+        Single<
+            (Entity, &ActionState<Action>),
+            Or<(With<Grounded>, With<BrushingLeft>, With<BrushingRight>)>,
+        >,
+    >,
+) {
+    let Some((entity, action_state)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
+
+    for action in action_state.get_just_pressed() {
+        if action == Action::Jump {
+            commands.entity(entity).insert(Jumping);
+        }
+    }
+}
+
 fn jumping(
     mut commands: Commands,
     player: Option<
@@ -227,6 +247,21 @@ pub struct Dashing(Option<Vec2>);
 impl Dashing {
     pub fn new(direction: Option<Vec2>) -> Self {
         Self(direction)
+    }
+}
+
+fn start_dash(mut commands: Commands, player: Option<Single<(Entity, &ActionState<Action>)>>) {
+    let Some((entity, action_state)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
+
+    let axis_pair = action_state.clamped_axis_pair(&Action::Run);
+    for action in action_state.get_just_pressed() {
+        if action == Action::Dash {
+            commands
+                .entity(entity)
+                .insert(Dashing::new((axis_pair != Vec2::ZERO).then_some(axis_pair)));
+        }
     }
 }
 
