@@ -1,5 +1,7 @@
 use super::{
-    hook::ViableTargets, input::XBOX_SELECTOR_MAP, Action, Collider, Homing, Player, Velocity,
+    hook::ViableTargets,
+    input::{ActiveInputType, InputType, CONTROLLER_SELECTOR_MAP, KEYBOARD_SELECTOR_MAP},
+    Action, Collider, Homing, Player, Velocity,
 };
 use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 use itertools::Itertools;
@@ -65,9 +67,6 @@ impl TargetScores {
             + self.distance_above_player
     }
 }
-
-#[derive(Resource)]
-pub(super) struct ActiveSelectors(Vec<Entity>);
 
 pub(super) fn calculate_selectors(
     collider_targets: Query<(Entity, &GlobalTransform, &Collider)>,
@@ -228,12 +227,6 @@ pub(super) struct SelectorTextureCache {
     map: HashMap<InputType, SelectorTexture>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum InputType {
-    XBox,
-    Keyboard,
-}
-
 #[derive(Clone)]
 struct SelectorTexture {
     image: Handle<Image>,
@@ -263,21 +256,50 @@ pub(super) fn insert_texture_cache(
 ) {
     let mut map = HashMap::default();
 
+    let layout = atlases.add(TextureAtlasLayout::from_grid(
+        UVec2::splat(32),
+        5,
+        1,
+        None,
+        None,
+    ));
+
     map.insert(
-        InputType::XBox,
+        InputType::Keyboard,
+        SelectorTexture {
+            image: server.load("sprites/keyboard_selector.png"),
+            atlas_map: {
+                let mut atlas_map = HashMap::default();
+                for (selector, button) in KEYBOARD_SELECTOR_MAP.iter() {
+                    let index = match button {
+                        KeyCode::KeyH => 1,
+                        KeyCode::KeyJ => 2,
+                        KeyCode::KeyK => 3,
+                        KeyCode::KeyL => 4,
+                        _ => unreachable!(),
+                    };
+
+                    atlas_map.insert(
+                        *selector,
+                        TextureAtlas {
+                            layout: layout.clone(),
+                            index,
+                        },
+                    );
+                }
+
+                atlas_map
+            },
+        },
+    );
+
+    map.insert(
+        InputType::Controller,
         SelectorTexture {
             image: server.load("sprites/xbox_selector.png"),
             atlas_map: {
-                let layout = atlases.add(TextureAtlasLayout::from_grid(
-                    UVec2::splat(32),
-                    5,
-                    1,
-                    None,
-                    None,
-                ));
-
                 let mut atlas_map = HashMap::default();
-                for (selector, button) in XBOX_SELECTOR_MAP.iter() {
+                for (selector, button) in CONTROLLER_SELECTOR_MAP.iter() {
                     let index = match button {
                         GamepadButton::South => 1,
                         GamepadButton::East => 2,
@@ -313,11 +335,25 @@ pub(super) fn add_selectors(
     mut commands: Commands,
     selector_query: Query<(&Selector, &SelectorInfo)>,
     mut selector_sprites: Query<(Entity, &Parent, &mut SelectorSprite)>,
-    sprite_query: Query<(Entity, &Sprite)>,
+    mut sprite_query: Query<(Entity, &mut Sprite)>,
     sprites: Res<Assets<Image>>,
     atlases: Res<Assets<TextureAtlasLayout>>,
     textures: Res<SelectorTextureCache>,
+    input: Res<ActiveInputType>,
 ) {
+    let selector_texture = textures
+        .map
+        .get(&input.ty())
+        .expect("unregistered input type");
+
+    if input.is_changed() {
+        for (entity, _, selector) in selector_sprites.iter() {
+            if let Ok((_, mut sprite)) = sprite_query.get_mut(entity) {
+                *sprite = selector_texture.sprite(&selector.0);
+            }
+        }
+    }
+
     // despawn old sprites
     for (entity, parent, _) in &selector_sprites {
         if !selector_query
@@ -343,8 +379,6 @@ pub(super) fn add_selectors(
             }
         }
     }
-
-    let selector_texture = textures.map.get(&InputType::XBox).unwrap();
 
     // spawn new sprites
     for (_, (selector, info)) in selector_query

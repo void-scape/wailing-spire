@@ -47,6 +47,7 @@ impl Plugin for PlayerPlugin {
             .init_resource::<selector::SelectorTick>()
             .insert_resource(selector::MaxSelectors(4))
             .insert_resource(hook::ShowHook::default())
+            .insert_resource(input::ActiveInputType::default())
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
@@ -60,6 +61,7 @@ impl Plugin for PlayerPlugin {
                     selector::insert_texture_cache,
                 ),
             )
+            .add_systems(PreUpdate, input::update_active_input_type)
             .add_systems(
                 Update,
                 (

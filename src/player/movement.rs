@@ -31,6 +31,7 @@ impl Plugin for MovementPlugin {
                     ground_strafe,
                     air_damping,
                 )
+                    .chain()
                     .after(brushing),
             )
                 .in_set(PlayerSystems::Movement),
