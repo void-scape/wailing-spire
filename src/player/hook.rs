@@ -1,7 +1,12 @@
 use super::params::*;
+use super::{
+    health::Dead,
+    selector::{MaxSelectors, SelectorInfo},
+    Action, Collider, CollidesWith, Player, Selector, Velocity,
+};
 use crate::{physics::spatial::SpatialHash, TILE_SIZE};
-use super::{health::Dead, Action, Collider, CollidesWith, Player, Velocity};
 use bevy::{prelude::*, sprite::Anchor};
+use itertools::Itertools;
 use leafwing_input_manager::prelude::*;
 use std::cmp::Ordering;
 
@@ -54,12 +59,12 @@ pub struct HookTarget;
 pub struct OccludeHookTarget;
 
 #[derive(Resource, Debug, Default)]
-pub struct ViableTargets(Vec<ViableTarget>);
+pub struct ViableTargets(pub(super) Vec<ViableTarget>);
 
 #[derive(Debug)]
-struct ViableTarget {
-    entity: Entity,
-    translation: Vec2,
+pub(super) struct ViableTarget {
+    pub(super) entity: Entity,
+    pub(super) translation: Vec2,
 }
 
 /// Player is moving fast enough to _kill_ enemies.
@@ -129,15 +134,11 @@ pub(super) fn gather_viable_targets(
 }
 
 pub(super) fn move_hook(
-    mut commands: Commands,
-    server: Res<AssetServer>,
     mut hook: Query<(&mut Visibility, &mut Transform, &Hook), (Without<Chain>, Without<Player>)>,
     mut chains: Query<&mut Transform, (With<Chain>, Without<Player>)>,
     collider_targets: Query<(Entity, &GlobalTransform, &Collider), Without<Hook>>,
     player: Query<
         (
-            Entity,
-            &ActionState<Action>,
             &GlobalTransform,
             &Collider,
             &Velocity,
@@ -146,7 +147,6 @@ pub(super) fn move_hook(
         With<Player>,
     >,
     mut vis_query: Query<&mut Visibility, Without<Hook>>,
-    viable: Res<ViableTargets>,
     show_hook: Res<ShowHook>,
     mut local_vis: Local<Visibility>,
 ) {
@@ -154,9 +154,7 @@ pub(super) fn move_hook(
         return;
     };
 
-    let Ok((player_entity, action, player, player_collider, player_velocity, homing)) =
-        player.get_single()
-    else {
+    let Ok((player, player_collider, player_velocity, homing)) = player.get_single() else {
         return;
     };
 
@@ -170,41 +168,42 @@ pub(super) fn move_hook(
         }
     }
 
-    let axis_pair = action.clamped_axis_pair(&Action::Aim);
+    // let axis_pair = action.clamped_axis_pair(&Action::Aim);
+    // let target = if axis_pair != Vec2::ZERO {
+    //     let mut viable_heuristic = viable
+    //         .0
+    //         .iter()
+    //         .map(|t| {
+    //             (
+    //                 t.entity,
+    //                 (t.translation - player.translation().xy())
+    //                     .normalize_or_zero()
+    //                     .dot(Vec2::new(axis_pair.x, axis_pair.y).normalize_or_zero()),
+    //             )
+    //         })
+    //         .filter(|(_, dot)| dot.is_sign_positive())
+    //         .collect::<Vec<_>>();
+    //
+    //     if viable_heuristic.is_empty() {
+    //         viable.0.first().map(|t| t.entity)
+    //     } else {
+    //         viable_heuristic.sort_unstable_by(|(_, dot_a), (_, dot_b)| {
+    //             if (dot_a.abs() - dot_b.abs()).abs() < 0.3 {
+    //                 Ordering::Equal
+    //             } else {
+    //                 dot_a.total_cmp(dot_b)
+    //             }
+    //         });
+    //         viable_heuristic.first().map(|(entity, _)| *entity)
+    //     }
+    // } else {
+    //     viable.0.first().map(|t| t.entity)
+    // };
 
-    let target = if axis_pair != Vec2::ZERO {
-        let mut viable_heuristic = viable
-            .0
-            .iter()
-            .map(|t| {
-                (
-                    t.entity,
-                    (t.translation - player.translation().xy())
-                        .normalize_or_zero()
-                        .dot(Vec2::new(axis_pair.x, axis_pair.y).normalize_or_zero()),
-                )
-            })
-            .filter(|(_, dot)| dot.is_sign_positive())
-            .collect::<Vec<_>>();
-
-        if viable_heuristic.is_empty() {
-            viable.0.first().map(|t| t.entity)
-        } else {
-            viable_heuristic.sort_unstable_by(|(_, dot_a), (_, dot_b)| {
-                if (dot_a.abs() - dot_b.abs()).abs() < 0.3 {
-                    Ordering::Equal
-                } else {
-                    dot_a.total_cmp(dot_b)
-                }
-            });
-            viable_heuristic.first().map(|(entity, _)| *entity)
-        }
-    } else {
-        viable.0.first().map(|t| t.entity)
-    };
-
-    if let Some(targ_selection) = target {
-        if let Ok((targ_entity, target, target_collider)) = collider_targets.get(targ_selection) {
+    let mut moved = false;
+    if let Some(targ_selection) = homing.map(|h| h.target()) {
+        if let Ok((_, target, target_collider)) = collider_targets.get(targ_selection) {
+            moved = true;
             let target = target.compute_transform();
             let abs_target = target_collider.absolute(&target);
 
@@ -223,16 +222,28 @@ pub(super) fn move_hook(
 
                 chain.translation = (abs_player.center() + segments * i as f32).extend(10.);
             }
+        }
+    }
 
-            if action.just_pressed(&Action::Interact) && homing.is_none() {
-                commands.spawn((
-                    AudioPlayer::new(server.load("audio/sfx/hook.wav")),
-                    PlaybackSettings::DESPAWN,
-                ));
-                commands
-                    .entity(player_entity)
-                    .insert(super::Homing::new(targ_entity, player_velocity.0));
-            }
+    //if action.just_pressed(&Action::Interact) && homing.is_none() {
+    //    commands.spawn((
+    //        AudioPlayer::new(server.load("audio/sfx/hook.wav")),
+    //        PlaybackSettings::DESPAWN,
+    //    ));
+    //    commands
+    //        .entity(player_entity)
+    //        .insert(super::Homing::new(targ_entity, player_velocity.0));
+    //}
+
+    // move offscreen?? idk
+    if !moved {
+        for chain in hook.chains.iter() {
+            let Ok(mut chain) = chains.get_mut(*chain) else {
+                continue;
+            };
+
+            chain.translation.x = -1000.0;
+            hook_transform.translation.x = -1000.0;
         }
     }
 }

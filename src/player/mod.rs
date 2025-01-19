@@ -30,11 +30,15 @@ pub mod health;
 pub mod hook;
 mod movement;
 mod params;
+mod selector;
+
+pub use selector::Selector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SystemSet)]
 pub enum PlayerSystems {
     Movement,
 }
+
 
 pub struct PlayerPlugin;
 
@@ -44,13 +48,15 @@ impl Plugin for PlayerPlugin {
             .register_required_components::<crate::spire::Knight, Player>()
             .add_event::<hook::HookTargetCollision>()
             .init_resource::<hook::ViableTargets>()
+            .init_resource::<selector::SelectorTick>()
+            .insert_resource(selector::MaxSelectors(4))
             .insert_resource(hook::ShowHook::default())
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
                 movement::MovementPlugin,
             ))
-            .add_systems(Startup, hook::spawn_hook)
+            .add_systems(Startup, (hook::spawn_hook, selector::spawn_selectors))
             .add_systems(
                 Update,
                 (
@@ -59,6 +65,9 @@ impl Plugin for PlayerPlugin {
                         hook::move_hook,
                         hook::terminal_velocity,
                         hook::collision_hook,
+                        selector::calculate_selectors,
+                        selector::move_selectors,
+                        selector::trigger_hook,
                         combo::combo,
                     )
                         .chain(),
@@ -108,10 +117,10 @@ fn input_map() -> InputMap<Action> {
         (Action::Interact, KeyCode::KeyE),
         (Action::Dash, KeyCode::KeyC),
     ])
-    .with(Action::Jump, GamepadButton::LeftTrigger)
-    .with(Action::Jump, GamepadButton::South)
-    .with(Action::Interact, GamepadButton::RightTrigger)
-    .with(Action::Dash, GamepadButton::West)
+    .with(Action::Jump, GamepadButton::RightTrigger)
+    // .with(Action::Jump, GamepadButton::South)
+    .with(Action::Interact, GamepadButton::LeftTrigger)
+    // .with(Action::Dash, GamepadButton::West)
     .with_dual_axis(
         Action::Aim,
         GamepadStick::RIGHT.with_deadzone_symmetric(0.3),
@@ -138,15 +147,6 @@ enum PlayerAnimation {
     Hit,
     Death,
 }
-
-/// A selector ID.
-#[derive(Debug, Clone, Copy, Component, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
-pub struct Selector(pub usize);
-
-/// The maximum number of hook selectors,
-/// which may differ depending on the platform.
-#[derive(Debug, Resource)]
-pub struct MaxSelectors(usize);
 
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
 pub enum Action {
