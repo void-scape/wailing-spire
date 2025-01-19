@@ -1,10 +1,21 @@
-use super::{
-    hook::HookTargetCollision, Action, Collision, Player, PlayerAnimation, TriggerEnter,
-    TriggerEvent,
+use super::{Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
+use crate::{
+    animation::AnimationController,
+    physics::{self, TimeScale},
+    tween::DespawnFinished,
 };
-use crate::animation::AnimationController;
-use bevy::prelude::*;
+use bevy::{
+    input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
+    prelude::*,
+};
+use bevy_pixel_gfx::screen_shake;
+use bevy_tween::{
+    combinator::{sequence, tween},
+    prelude::{AnimationBuilderExt, EaseKind},
+    tween::IntoTarget,
+};
 use leafwing_input_manager::prelude::ActionState;
+use std::time::Duration;
 
 /// Deal damage to player if hooked and collided with.
 #[derive(Default, Component)]
@@ -95,18 +106,28 @@ pub(super) fn death(
 }
 
 pub(super) fn hook_collision(
+    mut commands: Commands,
     mut player: Query<
         (
             Entity,
+            &GlobalTransform,
             &mut Health,
             &mut AnimationController<PlayerAnimation>,
+            &mut Acceleration,
         ),
         With<Player>,
     >,
-    damage_query: Query<&HookedDamage>,
+    transform_query: Query<&GlobalTransform>,
+    // damage_query: Query<&HookedDamage>,
     mut enter: EventReader<TriggerEnter>,
+    time_scale: Single<Entity, With<TimeScale>>,
+    mut screen_shake: ResMut<screen_shake::ScreenShake>,
+    gamepads: Query<Entity, With<Gamepad>>,
+    mut rumble_requests: EventWriter<GamepadRumbleRequest>,
 ) {
-    let Ok((entity, mut health, mut animations)) = player.get_single_mut() else {
+    let Ok((entity, transform, mut health, mut animations, mut acceleration)) =
+        player.get_single_mut()
+    else {
         return;
     };
 
@@ -116,6 +137,46 @@ pub(super) fn hook_collision(
             health.damage(1);
             animations.set_animation_one_shot(PlayerAnimation::Hit);
             println!("Ouch! [{}/{}]", health.current(), health.max());
+
+            let scale = time_scale.into_target();
+            commands
+                .animation()
+                .insert(sequence((
+                    tween(
+                        Duration::from_secs_f32(0.1),
+                        EaseKind::Linear,
+                        scale.with(physics::time_scale(1., 0.2)),
+                    ),
+                    tween(
+                        Duration::from_secs_f32(0.3),
+                        EaseKind::Linear,
+                        scale.with(physics::time_scale(0.2, 1.)),
+                    ),
+                )))
+                .insert(DespawnFinished);
+
+            screen_shake
+                .max_offset(125.)
+                .camera_decay(0.9)
+                .trauma_decay(1.2)
+                .shake();
+
+            for entity in &gamepads {
+                rumble_requests.send(GamepadRumbleRequest::Add {
+                    duration: Duration::from_secs_f32(0.3),
+                    intensity: GamepadRumbleIntensity::weak_motor(0.5),
+                    gamepad: entity,
+                });
+            }
+
+            let Ok(target_t) = transform_query.get(event.target) else {
+                continue;
+            };
+
+            let diff = (transform.translation() - target_t.translation())
+                .xy()
+                .normalize_or_zero();
+            acceleration.apply_force(diff * 500.);
         }
     }
 

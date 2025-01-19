@@ -1,6 +1,8 @@
 use bevy::app::FixedMainScheduleOrder;
 use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use bevy_tween::prelude::Interpolator;
+use bevy_tween::{component_tween_system, BevyTweenRegisterSystems};
 use layers::RegisterPhysicsLayer;
 
 pub mod collision;
@@ -20,8 +22,32 @@ pub mod prelude {
     pub use super::velocity::*;
 }
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Component)]
 pub struct TimeScale(pub f32);
+
+#[derive(Debug, Component)]
+pub struct TimeScaleRate {
+    start: f32,
+    end: f32,
+}
+
+impl TimeScaleRate {
+    pub fn new(start: f32, end: f32) -> Self {
+        Self { start, end }
+    }
+}
+
+impl Interpolator for TimeScaleRate {
+    type Item = TimeScale;
+
+    fn interpolate(&self, item: &mut Self::Item, value: f32) {
+        item.0 = self.start.lerp(self.end, value);
+    }
+}
+
+pub fn time_scale(start: f32, end: f32) -> TimeScaleRate {
+    TimeScaleRate::new(start, end)
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ScheduleLabel)]
 pub struct Physics;
@@ -42,17 +68,19 @@ impl Plugin for PhysicsPlugin {
             .resource_mut::<FixedMainScheduleOrder>()
             .insert_after(FixedUpdate, Physics);
 
+        app.world_mut().spawn(TimeScale(1.));
+
         app.register_collision_layer::<layers::Player>()
             .register_collision_layer::<layers::Enemy>()
             .register_collision_layer::<layers::Wall>()
             .register_grounded_layer::<layers::Wall>()
             .register_brushing_layer::<layers::Wall>();
 
-        app.add_plugins(Wireframe2dPlugin)
+        app.add_tween_systems(component_tween_system::<TimeScaleRate>())
+            .add_plugins(Wireframe2dPlugin)
             .add_event::<trigger::TriggerEvent>()
             .add_event::<trigger::TriggerEnter>()
             .add_event::<trigger::TriggerExit>()
-            .insert_resource(TimeScale(1.))
             .insert_resource(debug::ShowCollision(false))
             .add_systems(Update, collision::build_tile_set_colliders)
             .add_systems(

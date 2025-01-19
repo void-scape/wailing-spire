@@ -348,7 +348,7 @@ fn manage_brushing_move(
         >,
     >,
     time: Res<Time>,
-    scale: Res<TimeScale>,
+    scale: Single<&TimeScale>,
 ) {
     let Some((action, mut brushing_move, grounded, brushing_left, brushing_right)) =
         player.map(|p| p.into_inner())
@@ -490,7 +490,7 @@ fn jump(
         >,
     >,
     time: Res<Time>,
-    scale: Res<TimeScale>,
+    scale: Single<&TimeScale>,
     mut timer: Local<Option<Timer>>,
 ) {
     if let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) {
@@ -534,7 +534,7 @@ fn dash(
     >,
     mut reader: EventReader<HookTargetCollision>,
     time: Res<Time>,
-    scale: Res<TimeScale>,
+    scale: Single<&TimeScale>,
     mut timer: Local<Option<Timer>>,
     mut spawn_ghost_timer: Local<Option<Timer>>,
     mut ghost_z: Local<usize>,
