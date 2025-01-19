@@ -1,4 +1,7 @@
 use crate::player;
+use crate::player::combo::ComboCollision;
+use crate::player::health::HookedDamage;
+use crate::player::hook::HookTarget;
 use crate::{animation::AnimationController, physics::prelude::*, TILE_SIZE};
 use bevy::prelude::*;
 use layers::TriggersWith;
@@ -10,7 +13,7 @@ const SPEED: f32 = 50.;
 #[require(AnimationController<DinoAnimation>(animation_controller))]
 #[require(Velocity(velocity), DynamicBody, Collider(collider), TriggersWith<layers::Player>)]
 #[require(layers::CollidesWith<layers::Wall>)]
-#[require(player::HookTarget, player::ComboCollision, player::HookedDamage)]
+#[require(HookTarget, ComboCollision, HookedDamage)]
 #[require(super::DespawnHooked)]
 pub struct Dino;
 

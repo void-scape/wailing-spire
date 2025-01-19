@@ -1,4 +1,5 @@
-use crate::{impl_plugin, physics::prelude::Collider, player::HookTarget, spire, TILE_SIZE};
+use crate::player::hook::HookTarget;
+use crate::{impl_plugin, physics::prelude::Collider, spire, TILE_SIZE};
 pub use bevy::prelude::*;
 
 impl_plugin!(WallHookPlugin, |app: &mut App| {

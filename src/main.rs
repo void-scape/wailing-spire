@@ -9,8 +9,10 @@ use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
 use physics::{gravity::Gravity, layers, spatial::SpatialHash};
-use player::{health::Dead, OccludeHookTarget, Player};
+use player::{health::Dead, Player};
 use spire::*;
+
+use self::player::hook::OccludeHookTarget;
 
 mod animation;
 mod enemies;

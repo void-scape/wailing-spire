@@ -1,12 +1,9 @@
+use super::params::*;
 use crate::{physics::spatial::SpatialHash, TILE_SIZE};
-
 use super::{health::Dead, Action, Collider, CollidesWith, Player, Velocity};
 use bevy::{prelude::*, sprite::Anchor};
 use leafwing_input_manager::prelude::*;
 use std::cmp::Ordering;
-
-const TARGET_THRESHOLD: f32 = 256.0;
-const TERMINAL_VELOCITY2_THRESHOLD: f32 = 60_000.;
 
 #[derive(Debug, Resource)]
 pub(super) struct ShowHook(Visibility);
@@ -232,10 +229,9 @@ pub(super) fn move_hook(
                     AudioPlayer::new(server.load("audio/sfx/hook.wav")),
                     PlaybackSettings::DESPAWN,
                 ));
-                commands.entity(player_entity).insert(super::Homing {
-                    target: targ_entity,
-                    starting_velocity: player_velocity.0,
-                });
+                commands
+                    .entity(player_entity)
+                    .insert(super::Homing::new(targ_entity, player_velocity.0));
             }
         }
     }
@@ -320,7 +316,7 @@ pub(super) fn collision_hook(
         return;
     };
 
-    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.target) else {
+    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.target()) else {
         return;
     };
 

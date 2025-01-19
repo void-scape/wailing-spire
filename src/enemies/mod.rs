@@ -1,4 +1,5 @@
-use crate::{animation::AnimationPlugin, player::HookTargetCollision, spire};
+use crate::player::hook::HookTargetCollision;
+use crate::{animation::AnimationPlugin, spire};
 use bevy::prelude::*;
 use bevy_pixel_gfx::screen_shake;
 

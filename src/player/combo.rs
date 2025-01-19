@@ -1,4 +1,4 @@
-use super::{BrushingLeft, BrushingRight, Grounded, Homing, HookTargetCollision};
+use super::{hook::HookTargetCollision, BrushingLeft, BrushingRight, Grounded, Homing};
 use bevy::prelude::*;
 use bevy_pixel_gfx::pixel_perfect::HIGH_RES_LAYER;
 use bevy_tween::{
@@ -7,8 +7,6 @@ use bevy_tween::{
 };
 use interpolate::angle_z_to;
 use std::f32::consts::PI;
-
-const COMBO_PITCH_FACTOR: f32 = 0.;
 
 #[derive(Debug, Default, Component)]
 pub struct Combo(usize);
@@ -46,11 +44,10 @@ pub(super) fn combo(
     };
 
     if combo.0 > 0 && grounded.is_some() && homing.is_none()
-    // || brushing_left.is_some() || brushing_right.is_some()
     {
         commands.spawn((
             AudioPlayer::new(server.load("audio/sfx/combo.wav")),
-            PlaybackSettings::DESPAWN.with_speed(1. + combo.0 as f32 * COMBO_PITCH_FACTOR),
+            PlaybackSettings::DESPAWN.with_speed(1. + combo.0 as f32),
         ));
         for entity in text_query.iter().chain(animation_query.iter()) {
             commands.entity(entity).despawn();
@@ -107,13 +104,6 @@ pub(super) fn combo(
                     EaseKind::Linear,
                     text.state(rot).with(angle_z_to(0.)),
                 ),
-                // tween(
-                //     Duration::from_secs_f32(1.),
-                //     EaseKind::Linear,
-                //     text.state(transform.translation).with(translation_to(
-                //         transform.translation + Vec3::new(0., -10., 0.),
-                //     )),
-                // ),
             )))
             .insert(TextAnimation);
     }
