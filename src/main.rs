@@ -39,6 +39,7 @@ fn main() {
             bevy_tween::DefaultTweenPlugins,
             entities::EntityPlugin,
             spikes::SpikePlugin,
+            bevy_framepace::FramepacePlugin,
         ))
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash>(|| SpatialHash::new(32.))

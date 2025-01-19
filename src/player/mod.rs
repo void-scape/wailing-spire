@@ -134,11 +134,20 @@ fn input_map() -> InputMap<Action> {
         (Action::Interact, KeyCode::KeyE),
         (Action::Dash, KeyCode::KeyC),
     ])
+    .with(Action::Jump, GamepadButton::LeftTrigger)
     .with(Action::Jump, GamepadButton::South)
-    .with(Action::Interact, GamepadButton::North)
-    .with(Action::Dash, GamepadButton::East)
+    .with(Action::Interact, GamepadButton::RightTrigger)
+    .with(Action::Dash, GamepadButton::West)
+    .with_dual_axis(
+        Action::Aim,
+        GamepadStick::RIGHT.with_deadzone_symmetric(0.3),
+    )
     .with_dual_axis(Action::Run, GamepadStick::LEFT.with_deadzone_symmetric(0.3))
     .with_dual_axis(Action::Run, VirtualDPad::wasd())
+    .with(Action::Hook(Selector(0)), GamepadButton::North)
+    .with(Action::Hook(Selector(1)), GamepadButton::South)
+    .with(Action::Hook(Selector(2)), GamepadButton::West)
+    .with(Action::Hook(Selector(3)), GamepadButton::East)
 }
 
 fn collider() -> Collider {
@@ -156,13 +165,25 @@ enum PlayerAnimation {
     Death,
 }
 
+/// A selector ID.
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
+pub struct Selector(pub usize);
+
+/// The maximum number of hook selectors,
+/// which may differ depending on the platform.
+#[derive(Debug, Resource)]
+pub struct MaxSelectors(usize);
+
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
 pub enum Action {
     #[actionlike(DualAxis)]
     Run,
+    #[actionlike(DualAxis)]
+    Aim,
     Jump,
     Dash,
     Interact,
+    Hook(Selector),
 }
 
 #[derive(Default, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect, Component)]
@@ -556,7 +577,7 @@ fn dash(
                 }
 
                 let dash_vec = dash.0.unwrap_or_else(|| *last_dir);
-                velocity.0 = dash_vec * DASH_SPEED;
+                velocity.0 = dash_vec.normalize_or_zero() * DASH_SPEED;
 
                 let ghost_timer = spawn_ghost_timer.get_or_insert_with(|| {
                     Timer::from_seconds(DASH_DURATION / 5., TimerMode::Repeating)

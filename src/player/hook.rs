@@ -173,8 +173,9 @@ pub(super) fn move_hook(
         }
     }
 
-    let axis_pair = action.clamped_axis_pair(&Action::Run);
-    if let Some(targ_selection) = if axis_pair != Vec2::ZERO {
+    let axis_pair = action.clamped_axis_pair(&Action::Aim);
+
+    let target = if axis_pair != Vec2::ZERO {
         let mut viable_heuristic = viable
             .0
             .iter()
@@ -202,8 +203,11 @@ pub(super) fn move_hook(
             viable_heuristic.first().map(|(entity, _)| *entity)
         }
     } else {
+        info!("this is happing");
         viable.0.first().map(|t| t.entity)
-    } {
+    };
+
+    if let Some(targ_selection) = target {
         if let Ok((targ_entity, target, target_collider)) = collider_targets.get(targ_selection) {
             let target = target.compute_transform();
             let abs_target = target_collider.absolute(&target);
