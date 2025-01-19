@@ -22,6 +22,7 @@ use leafwing_input_manager::{
     prelude::{ActionState, InputMap},
     Actionlike,
 };
+use movement::BrushingMove;
 use std::hash::Hash;
 
 mod camera;
@@ -38,7 +39,6 @@ pub use selector::Selector;
 pub enum PlayerSystems {
     Movement,
 }
-
 
 pub struct PlayerPlugin;
 
@@ -95,6 +95,7 @@ impl Plugin for PlayerPlugin {
 #[require(AnchorTarget)]
 #[require(layers::CollidesWith<layers::Wall>, layers::CollidesWith<spikes::Spike>)]
 #[require(layers::Player)]
+#[require(BrushingMove)]
 #[require(Combo)]
 #[require(Health(|| Health::PLAYER))]
 pub struct Player;
@@ -163,23 +164,30 @@ pub enum Action {
 #[derive(Default, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect, Component)]
 pub enum Direction {
     #[default]
+    None,
     Right,
     Left,
 }
 
 impl Direction {
-    pub fn into_unit_vec2(self) -> Vec2 {
+    pub fn unit(self) -> Vec2 {
         match self {
+            Self::None => Vec2::ZERO,
             Self::Left => Vec2::NEG_X,
             Self::Right => Vec2::X,
         }
     }
 
     pub fn from_vec(vec: Vec2) -> Self {
-        if vec.x > 0.0 {
-            Direction::Right
-        } else {
-            Direction::Left
+        match vec {
+            Vec2::ZERO => Self::None,
+            vec => {
+                if vec.x > 0.0 {
+                    Direction::Right
+                } else {
+                    Direction::Left
+                }
+            }
         }
     }
 }
@@ -211,11 +219,11 @@ fn actions(
             Action::Jump => {
                 commands.entity(entity).insert(Jumping);
 
-                if brushing_left.is_some() {
-                    velocity.0.x += WALL_IMPULSE;
-                } else if brushing_right.is_some() {
-                    velocity.0.x -= WALL_IMPULSE;
-                }
+                // if brushing_left.is_some() {
+                //     velocity.0.x += WALL_IMPULSE;
+                // } else if brushing_right.is_some() {
+                //     velocity.0.x -= WALL_IMPULSE;
+                // }
             }
             Action::Dash => {
                 commands
@@ -236,10 +244,19 @@ fn direction(player: Option<Single<(&mut Direction, &ActionState<Action>), With<
     *direction = Direction::from_vec(axis_pair);
 }
 
-fn flip_sprite(player: Option<Single<(&mut Sprite, &Direction), With<Player>>>) {
+fn flip_sprite(
+    player: Option<Single<(&mut Sprite, &Direction), With<Player>>>,
+    mut prev_left: Local<bool>,
+) {
     let Some((mut sprite, direction)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
-    sprite.flip_x = Direction::Left == *direction;
+    sprite.flip_x = Direction::Left == *direction || *prev_left;
+
+    if *direction == Direction::Left {
+        *prev_left = true;
+    } else if *direction == Direction::Right {
+        *prev_left = false;
+    }
 }

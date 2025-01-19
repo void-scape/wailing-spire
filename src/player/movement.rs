@@ -20,14 +20,18 @@ impl Plugin for MovementPlugin {
         app.add_systems(
             Update,
             (
+                air_strafe.before(brushing),
                 brushing,
-                homing,
-                jumping,
-                dashing,
-                air_strafe,
-                wall_slide,
-                walk,
-                air_damping,
+                (
+                    wall_jump_impulse,
+                    homing,
+                    dashing,
+                    wall_slide,
+                    jumping,
+                    ground_strafe,
+                    air_damping,
+                )
+                    .after(brushing),
             )
                 .in_set(PlayerSystems::Movement),
         );
@@ -64,7 +68,7 @@ fn homing(
                 &Collider,
                 &mut Velocity,
                 &Resolution,
-                Option<&Collision<layers::Wall>>,
+                &Collision<layers::Wall>,
             ),
             With<Player>,
         >,
@@ -89,7 +93,7 @@ fn homing(
 
     let vector = (abs_target.center() - abs_player.center()).normalize_or_zero();
 
-    if collision.is_some() {
+    if !collision.entities().is_empty() {
         let contact_normal = res.get().normalize_or_zero();
         let bounce_dot = (contact_normal * -1.0).dot(vector);
 
@@ -108,49 +112,50 @@ fn homing(
         vector * 500. + target_vel.map(|t| t.0).unwrap_or_default() + homing.starting_velocity;
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Default, Clone, Component)]
 pub struct BrushingMove(Stopwatch);
-
-impl BrushingMove {
-    pub fn watch(&self) -> &Stopwatch {
-        &self.0
-    }
-}
 
 fn brushing(
     player: Option<
         Single<
             (
-                &ActionState<Action>,
+                &mut Velocity,
                 &mut BrushingMove,
-                Option<&Grounded>,
+                &Direction,
                 Option<&BrushingLeft>,
                 Option<&BrushingRight>,
             ),
-            With<Player>,
+            (
+                With<Player>,
+                Without<Grounded>,
+                Or<(With<BrushingLeft>, With<BrushingRight>)>,
+            ),
         >,
     >,
     time: Res<Time>,
     scale: Single<&TimeScale>,
 ) {
-    let Some((action, mut brushing_move, grounded, brushing_left, brushing_right)) =
+    let Some((mut velocity, mut brushing_move, direction, brushing_left, brushing_right)) =
         player.map(|p| p.into_inner())
     else {
         return;
     };
 
-    let axis_pair = action.clamped_axis_pair(&Action::Run);
-    let direction = Direction::from_vec(axis_pair);
-
-    if grounded.is_none()
-        && (brushing_left.is_some() && direction == Direction::Right
-            || brushing_right.is_some() && direction == Direction::Left)
+    if (brushing_left.is_some() && *direction == Direction::Right)
+        || (brushing_right.is_some() && *direction == Direction::Left)
     {
         brushing_move
             .0
             .tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
     } else {
         brushing_move.0.reset();
+    }
+
+    if brushing_move.0.elapsed_secs() >= WALL_STICK_TIME {
+        brushing_move.0.reset();
+    } else {
+        // override air_strafe movement
+        velocity.0.x = 0.;
     }
 }
 
@@ -169,25 +174,50 @@ fn jumping(
     scale: Single<&TimeScale>,
     mut timer: Local<Option<Timer>>,
 ) {
-    if let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) {
-        let timer =
-            timer.get_or_insert_with(|| Timer::from_seconds(JUMP_MAX_DURATION, TimerMode::Once));
+    let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
 
-        timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
-        if timer.finished()
-            || action_state
-                .get_pressed()
-                .iter()
-                .all(|a| *a != Action::Jump)
-        {
-            commands.entity(entity).remove::<Jumping>();
-            timer.reset();
-            velocity.0.y /= 2.;
-            return;
-        }
+    let timer =
+        timer.get_or_insert_with(|| Timer::from_seconds(JUMP_MAX_DURATION, TimerMode::Once));
 
-        // acceleration.apply_force(Vec2::Y * JUMP_FORCE);
-        velocity.0.y = JUMP_SPEED;
+    timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
+    if timer.finished()
+        || action_state
+            .get_pressed()
+            .iter()
+            .all(|a| *a != Action::Jump)
+    {
+        commands.entity(entity).remove::<Jumping>();
+        timer.reset();
+        velocity.0.y /= 2.;
+        return;
+    }
+
+    // acceleration.apply_force(Vec2::Y * JUMP_FORCE);
+    velocity.0.y = JUMP_SPEED;
+}
+
+fn wall_jump_impulse(
+    player: Option<
+        Single<
+            (&mut Velocity, Option<&BrushingLeft>, Option<&BrushingRight>),
+            (
+                With<Player>,
+                Added<Jumping>,
+                Or<(With<BrushingLeft>, With<BrushingRight>)>,
+            ),
+        >,
+    >,
+) {
+    let Some((mut velocity, brushing_left, brushing_right)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
+
+    if brushing_left.is_some() {
+        velocity.0.x += WALL_IMPULSE;
+    } else if brushing_right.is_some() {
+        velocity.0.x -= WALL_IMPULSE;
     }
 }
 
@@ -297,35 +327,38 @@ fn dashing(
 
 fn air_strafe(
     player: Option<
-        Single<
-            (&mut Velocity, &Direction, &BrushingMove),
-            (
-                With<Player>,
-                Without<BrushingLeft>,
-                Without<BrushingRight>,
-                Without<Dashing>,
-            ),
-        >,
+        Single<(&mut Velocity, &Direction), (With<Player>, Without<Grounded>, Without<Dashing>)>,
     >,
 ) {
-    let Some((mut velocity, direction, brushing_move)) = player.map(|p| p.into_inner()) else {
+    let Some((mut velocity, direction)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
-    if brushing_move.watch().elapsed_secs() <= WALL_STICK_TIME {
-        match direction {
-            Direction::Right => {
-                if velocity.0.x < WALK_SPEED {
-                    velocity.0.x = (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
-                }
-            }
-            Direction::Left => {
-                if velocity.0.x > -WALK_SPEED {
-                    velocity.0.x = (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
-                }
+    match direction {
+        Direction::Right => {
+            if velocity.0.x < WALK_SPEED {
+                velocity.0.x = (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
             }
         }
+        Direction::Left => {
+            if velocity.0.x > -WALK_SPEED {
+                velocity.0.x = (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
+            }
+        }
+        _ => {}
     }
+}
+
+fn ground_strafe(
+    player: Option<
+        Single<(&mut Velocity, &Direction), (With<Player>, With<Grounded>, Without<Dashing>)>,
+    >,
+) {
+    let Some((mut velocity, direction)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
+
+    velocity.0.x = direction.unit().x * WALK_SPEED;
 }
 
 fn wall_slide(
@@ -338,23 +371,6 @@ fn wall_slide(
     };
 
     velocity.0.y = velocity.0.y.max(-SLIDE_SPEED);
-}
-
-fn walk(
-    player: Option<
-        Single<
-            (&mut Velocity, &ActionState<Action>),
-            (With<Player>, With<Grounded>, Without<Dashing>),
-        >,
-    >,
-) {
-    let Some((mut velocity, action_state)) = player.map(|p| p.into_inner()) else {
-        return;
-    };
-
-    let axis_pair = action_state.clamped_axis_pair(&Action::Run);
-    let dir = Direction::from_vec(axis_pair);
-    velocity.0.x = dir.into_unit_vec2().x * WALK_SPEED;
 }
 
 fn air_damping(
