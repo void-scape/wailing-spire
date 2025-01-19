@@ -112,48 +112,51 @@ pub(super) fn calculate_selectors(
     let mut greatest_distance = 0.0;
     let mut greatest_distance_above = 0.0;
     for group in processed_targets.iter().permutations(pool_size) {
-        let mut eval = TargetScores::default();
+        for selector_group in collected_selectors.iter().permutations(pool_size) {
+            let mut eval = TargetScores::default();
 
-        for (i, target) in group.iter().enumerate() {
-            let selector = Selector(i);
-
-            eval.distance += target.distance.abs();
-            eval.distance_above_player += target.vertical_distance;
-            if target.selector.is_some_and(|s| s == selector) {
-                eval.selector.stability += 1.0 / pool_size as f32;
+            for (target, (selector, info)) in group.iter().zip(&selector_group) {
+                eval.distance += target.distance.abs();
+                eval.distance_above_player += target.vertical_distance;
+                if target.selector.is_some_and(|s| s == *selector) {
+                    eval.selector.stability += 1.0 / pool_size as f32;
+                }
             }
-        }
 
-        if eval.distance > greatest_distance {
-            greatest_distance = eval.distance;
-        }
+            if eval.distance > greatest_distance {
+                greatest_distance = eval.distance;
+            }
 
-        if eval.distance_above_player > greatest_distance_above {
-            greatest_distance_above = eval.distance_above_player;
-        }
+            if eval.distance_above_player > greatest_distance_above {
+                greatest_distance_above = eval.distance_above_player;
+            }
 
-        all_evaluations.push((group, eval));
+            all_evaluations.push((group.clone(), selector_group, eval));
+        }
     }
 
     // now we normalize the distance scores
     for score in all_evaluations.iter_mut() {
         if greatest_distance != 0.0 {
-            score.1.distance /= greatest_distance;
+            score.2.distance /= greatest_distance;
         }
 
         if greatest_distance_above != 0.0 {
-            score.1.distance_above_player /= greatest_distance_above;
+            score.2.distance_above_player /= greatest_distance_above;
         }
     }
 
-    all_evaluations.sort_unstable_by(|a, b| a.1.sum().total_cmp(&b.1.sum()).reverse());
+    all_evaluations.sort_unstable_by(|a, b| a.2.sum().total_cmp(&b.2.sum()).reverse());
 
     if let Some(best) = all_evaluations.first() {
         for (s, mut info) in selectors.iter_mut() {
-            if let Some(target) = best.0.get(s.0) {
+            let position = best.1.iter().position(|p| p.0 == *s);
+
+            if let Some(position) = position {
+                let target = best.0[position].entity;
                 selector_tick.0 += 1;
                 info.tick = selector_tick.0;
-                info.target = Some(target.entity);
+                info.target = Some(target);
             } else {
                 info.target = None;
             }
