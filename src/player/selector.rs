@@ -1,5 +1,7 @@
 use super::{
-    hook::ViableTargets, input::XBOX_SELECTOR_MAP, Action, Collider, Homing, Player, Velocity,
+    hook::{HookTarget, ViableTargets},
+    input::XBOX_SELECTOR_MAP,
+    Action, Collider, Homing, Player, Velocity,
 };
 use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 use itertools::Itertools;
@@ -70,7 +72,7 @@ impl TargetScores {
 pub(super) struct ActiveSelectors(Vec<Entity>);
 
 pub(super) fn calculate_selectors(
-    collider_targets: Query<(Entity, &GlobalTransform, &Collider)>,
+    collider_targets: Query<(Entity, &GlobalTransform, &Collider), With<HookTarget>>,
     player: Query<(&ActionState<Action>, &GlobalTransform, &Collider), With<Player>>,
     viable: Res<ViableTargets>,
     mut selectors: Query<(&Selector, &mut SelectorInfo)>,
@@ -83,11 +85,26 @@ pub(super) fn calculate_selectors(
 
     let player_center = pcoll.global_absolute(ptrans).center();
 
+    let viable: Vec<_> = collider_targets
+        .iter()
+        .filter_map(|(e, t, c)| {
+            let center = c.global_absolute(t).center();
+            if center.distance(player_center) < 500.0 {
+                Some(super::hook::ViableTarget {
+                    entity: e,
+                    translation: center,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
     let mut collected_selectors: Vec<_> = selectors.iter().map(|(s, i)| (*s, *i)).collect();
     collected_selectors.sort_by_key(|pair| pair.0);
     let mut processed_targets = Vec::new();
 
-    for viable in &viable.0 {
+    for viable in &viable {
         let Ok((_, vtrans, vcoll)) = collider_targets.get(viable.entity) else {
             continue;
         };
@@ -108,7 +125,7 @@ pub(super) fn calculate_selectors(
         });
     }
 
-    let pool_size = viable.0.len().min(max_selectors.0);
+    let pool_size = viable.len().min(max_selectors.0);
     if pool_size == 0 {
         return;
     }
