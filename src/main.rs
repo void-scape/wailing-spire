@@ -8,7 +8,7 @@ use bevy::{
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
-use physics::{gravity::Gravity, layers, spatial::SpatialHash, TimeScale};
+use physics::{gravity::Gravity, layers, spatial::SpatialHash};
 use player::{health::Dead, OccludeHookTarget, Player};
 use spire::*;
 
@@ -20,6 +20,7 @@ mod physics;
 mod player;
 mod spikes;
 mod spire;
+mod tween;
 
 const WIDTH: f32 = 384.;
 const HEIGHT: f32 = 216.;
@@ -29,6 +30,7 @@ const LEVEL_SIZE: Vec2 = Vec2::splat(20.);
 fn main() {
     App::default()
         .add_plugins((
+            bevy_tween::DefaultTweenPlugins,
             DefaultPlugins.set(ImagePlugin::default_nearest()),
             bevy_pixel_gfx::PixelGfxPlugin(CanvasDimensions::new(WIDTH as u32, HEIGHT as u32)),
             bevy_ldtk_scene::LdtkScenePlugin,
@@ -36,11 +38,11 @@ fn main() {
             physics::PhysicsPlugin,
             spire::SpirePlugin,
             enemies::EnemyPlugin,
-            bevy_tween::DefaultTweenPlugins,
             entities::EntityPlugin,
             spikes::SpikePlugin,
             bevy_framepace::FramepacePlugin,
         ))
+        .add_systems(Update, tween::despawn_finished_tweens)
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash>(|| SpatialHash::new(32.))
         .register_required_components::<LevelTileSets, layers::Wall>()

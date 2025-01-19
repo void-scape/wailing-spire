@@ -66,7 +66,7 @@ pub fn apply_velocity(
         Option<&MaxVelocity>,
     )>,
     time: Res<Time>,
-    scale: Res<TimeScale>,
+    scale: Single<&TimeScale>,
 ) {
     for (mut transform, mut velocity, mut acceleration, weight, max) in query.iter_mut() {
         // It doesn't seem like scale should be applied to acceleration, but it does.

@@ -203,7 +203,6 @@ pub(super) fn move_hook(
             viable_heuristic.first().map(|(entity, _)| *entity)
         }
     } else {
-        info!("this is happing");
         viable.0.first().map(|t| t.entity)
     };
 

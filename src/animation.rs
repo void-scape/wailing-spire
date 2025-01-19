@@ -1,6 +1,8 @@
 use bevy::{prelude::*, utils::HashMap};
 use std::{hash::Hash, marker::PhantomData, time::Duration};
 
+use crate::physics::TimeScale;
+
 pub struct AnimationPlugin<A> {
     _marker: PhantomData<A>,
 }
@@ -96,15 +98,15 @@ impl<A: Animation> AnimationController<A> {
         self.active_index.as_ref().map(|(dir, _, _)| dir)
     }
 
-    fn update(&mut self, time: &Time) {
-        self.timer.tick(time.delta());
+    fn update(&mut self, time: &Time, scale: &TimeScale) {
+        self.timer
+            .tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
 
         if let Some((_, (start, end), index)) = &mut self.active_index {
             if self.timer.just_finished() {
                 if self.one_shot {
-                    *index += 1;
-                    if *index >= *end {
-                        *index = *end;
+                    if *index < end.saturating_sub(1) {
+                        *index += 1;
                     }
                 } else {
                     *index += 1;
@@ -124,9 +126,10 @@ impl<A: Animation> AnimationController<A> {
 fn animation<A: Animation>(
     mut query: Query<(&mut Sprite, &mut AnimationController<A>)>,
     time: Res<Time>,
+    scale: Single<&TimeScale>,
 ) {
     for (mut sprite, mut animation) in query.iter_mut() {
-        animation.update(&time);
+        animation.update(&time, &scale);
         if let Some(index) = animation.index() {
             if let Some(atlas) = &mut sprite.texture_atlas {
                 atlas.index = index;
