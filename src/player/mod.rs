@@ -1,11 +1,11 @@
 use self::movement::Homing;
-use self::params::*;
 use crate::animation::{AnimationController, AnimationPlugin};
 use crate::{spikes, HEIGHT, TILE_SIZE, WIDTH};
 use ::selector::Selector;
 use bevy::prelude::*;
-use bevy_pixel_gfx::camera::MainCamera;
-use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
+use bevy_inspector_egui::prelude::*;
+use bevy_inspector_egui::quick::ResourceInspectorPlugin;
+use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, camera::MainCamera};
 use combo::Combo;
 use health::Health;
 use layers::RegisterPhysicsLayer;
@@ -27,8 +27,61 @@ pub mod health;
 pub mod hook;
 mod input;
 mod movement;
-mod params;
 mod selector;
+
+pub const MAX_VEL: f32 = 300.;
+
+#[derive(Resource, Reflect, InspectorOptions)]
+#[reflect(Resource, InspectorOptions)]
+pub struct PlayerSettings {
+    pub camera_speed: f32,
+
+    pub wall_impulse: f32,
+    pub walk_speed: f32,
+    pub air_accel: f32,
+    pub air_damping: f32,
+    pub slide_speed: f32,
+    pub wall_stick_time: f32,
+
+    /// The angle (in terms of the dot product)
+    /// at which the player should break lock-on
+    /// with a target when hitting a static body.
+    pub break_angle: f32,
+
+    pub jump_speed: f32,
+    pub jump_max_duration: f32,
+
+    pub dash_duration: f32,
+    pub dash_speed: f32,
+    /// Divides the velocity by this factor _once_ after a dash is completed.
+    pub dash_decay: f32,
+
+    /// Maximum distance for a hook target
+    pub target_threshold: f32,
+    pub terminal_velocity2_threshold: f32,
+}
+
+impl Default for PlayerSettings {
+    fn default() -> Self {
+        Self {
+            camera_speed: 0.1,
+            wall_impulse: 400.,
+            walk_speed: 130.,
+            air_accel: 0.08,
+            air_damping: 0.04,
+            slide_speed: 40.,
+            wall_stick_time: 0.20,
+            break_angle: 0.66,
+            jump_speed: 200.,
+            jump_max_duration: 0.2,
+            dash_duration: 0.1,
+            dash_speed: 1000.,
+            dash_decay: 2.,
+            target_threshold: 256.0,
+            terminal_velocity2_threshold: 60_000.,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SystemSet)]
 pub enum PlayerSystems {
@@ -67,10 +120,13 @@ impl Plugin for PlayerPlugin {
             .insert_resource(::selector::MaxSelectors(4))
             .insert_resource(hook::ShowHook::default())
             .insert_resource(input::ActiveInputType::default())
+            .insert_resource(PlayerSettings::default())
+            .register_type::<PlayerSettings>()
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
                 movement::MovementPlugin,
+                ResourceInspectorPlugin::<PlayerSettings>::default(),
             ))
             .add_systems(
                 Startup,
@@ -85,24 +141,26 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     (
-                        hook::gather_viable_targets,
-                        hook::move_hook,
-                        hook::terminal_velocity,
+                        direction.before(PlayerSystems::Movement),
+                        flip_sprite.after(PlayerSystems::Movement),
+                    ),
+                    (
+                        health::no_shield_collision,
                         hook::collision_hook,
-                        selector::clear_removed_entities,
-                        ::selector::calculate_selectors,
-                        selector::trigger_hook,
-                        combo::combo,
+                        (
+                            hook::gather_viable_targets,
+                            hook::move_hook,
+                            selector::clear_removed_entities,
+                            ::selector::calculate_selectors,
+                            selector::trigger_hook,
+                            combo::combo,
+                            camera::update_current_level,
+                            health::death,
+                            hook::show_hook,
+                        ),
                     )
                         .chain(),
-                    camera::update_current_level,
-                    health::death,
-                    hook::show_hook,
-                    direction.before(PlayerSystems::Movement),
-                    flip_sprite.after(PlayerSystems::Movement),
-                    health::no_shield_collision,
-                )
-                    .chain(),
+                ),
             )
             .add_systems(PostUpdate, selector::add_selectors)
             .add_systems(
@@ -123,7 +181,7 @@ impl Plugin for PlayerPlugin {
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input::input_map))]
-#[require(Velocity, Gravitational, DynamicBody, Collider(collider), Trigger(|| Trigger(collider())), TriggersWith<layers::Player>)]
+#[require(Velocity, Gravitational, DynamicBody, Collider(collider), Trigger(trigger), TriggersWith<layers::Player>)]
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
@@ -152,6 +210,13 @@ fn collider() -> Collider {
         Vec2::new(TILE_SIZE * 0.75, -TILE_SIZE * 1.25),
         Vec2::splat(TILE_SIZE / 2.),
     )
+}
+
+fn trigger() -> Trigger {
+    Trigger(Collider::from_rect(
+        Vec2::new(TILE_SIZE / 2., -TILE_SIZE / 1.5),
+        Vec2::splat(TILE_SIZE),
+    ))
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

@@ -1,9 +1,11 @@
 use super::hook::HookTargetCollision;
-use super::params::*;
 use super::Action;
 use super::Direction;
 use super::Player;
+use super::PlayerAnimation;
+use super::PlayerSettings;
 use super::PlayerSystems;
+use crate::animation::AnimationController;
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
 use bevy_tween::combinator::tween;
@@ -75,6 +77,7 @@ fn homing(
     >,
     target: Query<(&GlobalTransform, &Collider, Option<&Velocity>), Without<Player>>,
     mut commands: Commands,
+    settings: Res<PlayerSettings>,
 ) {
     let Some((player, mut homing, player_trans, player_collider, mut player_vel, res, collision)) =
         player.map(|p| p.into_inner())
@@ -97,10 +100,10 @@ fn homing(
         let contact_normal = res.get().normalize_or_zero();
         let bounce_dot = (contact_normal * -1.0).dot(vector);
 
-        if bounce_dot > BREAK_ANGLE {
+        if bounce_dot > settings.break_angle {
             commands.entity(player).remove::<Homing>();
             // TODO: get a nice bounce
-            // player_vel.0 = contact_normal * 100.;
+            player_vel.0 = contact_normal * 100.;
             return;
         }
     }
@@ -134,6 +137,7 @@ fn brushing(
     >,
     time: Res<Time>,
     scale: Single<&TimeScale>,
+    settings: Res<PlayerSettings>,
 ) {
     let Some((mut velocity, mut brushing_move, direction, brushing_left, brushing_right)) =
         player.map(|p| p.into_inner())
@@ -151,7 +155,7 @@ fn brushing(
         brushing_move.0.reset();
     }
 
-    if brushing_move.0.elapsed_secs() >= WALL_STICK_TIME {
+    if brushing_move.0.elapsed_secs() >= settings.wall_stick_time {
         brushing_move.0.reset();
     } else {
         // override air_strafe movement
@@ -193,13 +197,14 @@ fn jumping(
     time: Res<Time>,
     scale: Single<&TimeScale>,
     mut timer: Local<Option<Timer>>,
+    settings: Res<PlayerSettings>,
 ) {
     let Some((entity, action_state, mut velocity)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
-    let timer =
-        timer.get_or_insert_with(|| Timer::from_seconds(JUMP_MAX_DURATION, TimerMode::Once));
+    let timer = timer
+        .get_or_insert_with(|| Timer::from_seconds(settings.jump_max_duration, TimerMode::Once));
 
     timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
     if timer.finished()
@@ -215,7 +220,7 @@ fn jumping(
     }
 
     // acceleration.apply_force(Vec2::Y * JUMP_FORCE);
-    velocity.0.y = JUMP_SPEED;
+    velocity.0.y = settings.jump_speed;
 }
 
 fn wall_jump_impulse(
@@ -229,15 +234,16 @@ fn wall_jump_impulse(
             ),
         >,
     >,
+    settings: Res<PlayerSettings>,
 ) {
     let Some((mut velocity, brushing_left, brushing_right)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
     if brushing_left.is_some() {
-        velocity.0.x += WALL_IMPULSE;
+        velocity.0.x += settings.wall_impulse;
     } else if brushing_right.is_some() {
-        velocity.0.x -= WALL_IMPULSE;
+        velocity.0.x -= settings.wall_impulse;
     }
 }
 
@@ -290,6 +296,7 @@ fn dashing(
     mut ghost_z: Local<usize>,
     mut dash_reset: Local<bool>,
     mut last_dir: Local<Vec2>,
+    settings: Res<PlayerSettings>,
 ) {
     let Some((entity, transform, sprite, mut velocity, action_state, dash, grounded)) =
         player.map(|p| p.into_inner())
@@ -316,22 +323,23 @@ fn dashing(
                 ));
             }
 
-            let dash_timer =
-                timer.get_or_insert_with(|| Timer::from_seconds(DASH_DURATION, TimerMode::Once));
+            let dash_timer = timer.get_or_insert_with(|| {
+                Timer::from_seconds(settings.dash_duration, TimerMode::Once)
+            });
             dash_timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
             if dash_timer.finished() {
                 *dash_reset = false;
                 commands.entity(entity).remove::<Dashing>();
                 *timer = None;
-                velocity.0 /= DASH_DECAY;
+                velocity.0 /= settings.dash_decay;
                 return;
             }
 
             let dash_vec = dash.0.unwrap_or_else(|| *last_dir);
-            velocity.0 = dash_vec.normalize_or_zero() * DASH_SPEED;
+            velocity.0 = dash_vec.normalize_or_zero() * settings.dash_speed;
 
             let ghost_timer = spawn_ghost_timer.get_or_insert_with(|| {
-                Timer::from_seconds(DASH_DURATION / 5., TimerMode::Repeating)
+                Timer::from_seconds(settings.dash_duration / 5., TimerMode::Repeating)
             });
             ghost_timer.tick(Duration::from_secs_f32(time.delta_secs() * scale.0));
             if ghost_timer.just_finished() {
@@ -362,32 +370,51 @@ fn dashing(
 
 fn air_strafe(
     player: Option<
-        Single<(&mut Velocity, &Direction), (With<Player>, Without<Grounded>, Without<Dashing>)>,
+        Single<
+            (
+                &mut Velocity,
+                &Direction,
+                &mut AnimationController<PlayerAnimation>,
+            ),
+            (With<Player>, Without<Grounded>, Without<Dashing>),
+        >,
     >,
+    settings: Res<PlayerSettings>,
 ) {
-    let Some((mut velocity, direction)) = player.map(|p| p.into_inner()) else {
+    let Some((mut velocity, direction, mut animations)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
     match direction {
         Direction::Right => {
-            if velocity.0.x < WALK_SPEED {
-                velocity.0.x = (velocity.0.x + AIR_ACCEL * WALK_SPEED).min(WALK_SPEED);
+            if velocity.0.x < settings.walk_speed {
+                velocity.0.x = (velocity.0.x + settings.air_accel * settings.walk_speed)
+                    .min(settings.walk_speed);
             }
         }
         Direction::Left => {
-            if velocity.0.x > -WALK_SPEED {
-                velocity.0.x = (velocity.0.x - AIR_ACCEL * WALK_SPEED).max(-WALK_SPEED);
+            if velocity.0.x > -settings.walk_speed {
+                velocity.0.x = (velocity.0.x - settings.air_accel * settings.walk_speed)
+                    .max(-settings.walk_speed);
             }
         }
         _ => {}
     }
+
+    animations.set_animation_checked(match direction {
+        Direction::None => PlayerAnimation::Idle,
+        Direction::Right | Direction::Left => PlayerAnimation::Run,
+    });
 }
 
 fn ground_strafe(
     player: Option<
         Single<
-            (&mut Velocity, &Direction),
+            (
+                &mut Velocity,
+                &Direction,
+                &mut AnimationController<PlayerAnimation>,
+            ),
             (
                 With<Player>,
                 With<Grounded>,
@@ -396,24 +423,30 @@ fn ground_strafe(
             ),
         >,
     >,
+    settings: Res<PlayerSettings>,
 ) {
-    let Some((mut velocity, direction)) = player.map(|p| p.into_inner()) else {
+    let Some((mut velocity, direction, mut animations)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
-    velocity.0.x = direction.unit().x * WALK_SPEED;
+    velocity.0.x = direction.unit().x * settings.walk_speed;
+    animations.set_animation_checked(match direction {
+        Direction::None => PlayerAnimation::Idle,
+        Direction::Right | Direction::Left => PlayerAnimation::Run,
+    });
 }
 
 fn wall_slide(
     player: Option<
         Single<&mut Velocity, (With<Player>, Or<(With<BrushingLeft>, With<BrushingRight>)>)>,
     >,
+    settings: Res<PlayerSettings>,
 ) {
     let Some(mut velocity) = player else {
         return;
     };
 
-    velocity.0.y = velocity.0.y.max(-SLIDE_SPEED);
+    velocity.0.y = velocity.0.y.max(-settings.slide_speed);
 }
 
 fn air_damping(
@@ -428,10 +461,11 @@ fn air_damping(
             ),
         >,
     >,
+    settings: Res<PlayerSettings>,
 ) {
     let Some(mut velocity) = player else {
         return;
     };
 
-    velocity.0.x *= 1.0 - AIR_DAMPING;
+    velocity.0.x *= 1.0 - settings.air_damping;
 }
