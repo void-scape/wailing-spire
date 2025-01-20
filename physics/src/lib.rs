@@ -4,6 +4,7 @@ use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 use bevy_tween::prelude::Interpolator;
 use bevy_tween::{component_tween_system, BevyTweenRegisterSystems};
 use layers::RegisterPhysicsLayer;
+use prelude::Collision;
 
 pub mod collision;
 pub mod debug;
@@ -51,6 +52,13 @@ pub fn time_scale(start: f32, end: f32) -> TimeScaleRate {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ScheduleLabel)]
 pub struct Physics;
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, SystemSet)]
+pub enum CollisionSystems {
+    Resolution,
+    Grounding,
+    Brushing,
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, SystemSet)]
 pub enum PhysicsSystems {
@@ -114,7 +122,12 @@ impl Plugin for PhysicsPlugin {
             )
             .configure_sets(
                 Physics,
-                PhysicsSystems::Velocity.before(PhysicsSystems::Collision),
+                (
+                    PhysicsSystems::Velocity.before(PhysicsSystems::Collision),
+                    CollisionSystems::Resolution
+                        .before(CollisionSystems::Grounding)
+                        .before(CollisionSystems::Brushing),
+                ),
             );
     }
 }

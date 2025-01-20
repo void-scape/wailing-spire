@@ -166,17 +166,14 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Physics,
                 (
-
                     camera::move_camera.before(PhysicsSystems::Velocity),
-                (
-                    (
+                    ((
                         selector::manage_offscreen_selectors,
                         selector::move_offscreen_indicators,
                     )
-                        .chain(),
-                )
-                    .after(PhysicsSystems::Collision),
-                )
+                        .chain(),)
+                        .after(PhysicsSystems::Collision),
+                ),
             );
     }
 }
@@ -184,7 +181,13 @@ impl Plugin for PlayerPlugin {
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input::input_map))]
-#[require(Velocity, Gravitational, DynamicBody, Collider(collider), Trigger(trigger), TriggersWith<layers::Player>)]
+#[require(
+    Velocity,
+    Gravitational,
+    DynamicBody,
+    Collider(collider),
+    Trigger(trigger)
+)]
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]

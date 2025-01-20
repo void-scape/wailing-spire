@@ -593,7 +593,7 @@ pub fn update_grounded<T: Component>(
                     (AbsoluteCollider::Rect(a), AbsoluteCollider::Rect(b)) => {
                         let x_range = b.tl.x..b.br().x;
 
-                        let on_top = (a.br().y - b.tl.y).abs() < 0.1;
+                        let on_top = (a.br().y - b.tl.y).abs() < 0.5;
                         let corner_inside =
                             x_range.contains(&a.tl.x) || x_range.contains(&a.br().x);
                         let no_going_up = velocity.0.y >= 0.;

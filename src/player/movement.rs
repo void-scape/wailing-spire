@@ -21,7 +21,7 @@ impl Plugin for MovementPlugin {
         app.add_systems(
             Update,
             (
-                (start_jump, start_dash, air_strafe).before(brushing),
+                (start_jump, start_dash, air_strafe),
                 brushing,
                 (
                     wall_jump_impulse,
@@ -31,17 +31,18 @@ impl Plugin for MovementPlugin {
                     jumping,
                     ground_strafe,
                     air_damping,
+                    // debug,
                 )
-                    .chain()
-                    .after(brushing),
+                    .chain(),
             )
+                .chain()
                 .in_set(PlayerSystems::Movement),
         );
     }
 }
 
 /// The player is homing in on a hooked target.
-#[derive(Component)]
+#[derive(Debug, Component)]
 pub struct Homing {
     target: Entity,
     starting_velocity: Vec2,
@@ -163,7 +164,7 @@ fn brushing(
     }
 }
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 pub struct Jumping;
 
 fn start_jump(
@@ -231,6 +232,7 @@ fn wall_jump_impulse(
                 With<Player>,
                 Added<Jumping>,
                 Or<(With<BrushingLeft>, With<BrushingRight>)>,
+                Without<Grounded>,
             ),
         >,
     >,
@@ -247,7 +249,7 @@ fn wall_jump_impulse(
     }
 }
 
-#[derive(Default, Component)]
+#[derive(Debug, Default, Component)]
 pub struct Dashing(Option<Vec2>);
 
 impl Dashing {
@@ -468,4 +470,24 @@ fn air_damping(
     };
 
     velocity.0.x *= 1.0 - settings.air_damping;
+}
+
+fn debug(
+    player: Option<
+        Single<
+            (
+                Option<&Grounded>,
+                Option<&BrushingLeft>,
+                Option<&BrushingRight>,
+                Option<&Homing>,
+                Option<&Jumping>,
+                Option<&Dashing>,
+            ),
+            With<Player>,
+        >,
+    >,
+) {
+    if let Some(player) = player {
+        println!("{:#?}", player.into_inner());
+    }
 }

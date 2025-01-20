@@ -101,7 +101,7 @@ pub fn emit_trigger_states(
 }
 
 pub fn handle_triggers<T: Component>(
-    triggers: Query<(Entity, &GlobalTransform, &Trigger)>,
+    triggers: Query<(Entity, &GlobalTransform, &Trigger), With<T>>,
     bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggersWith<T>)>,
     mut body_triggers: Query<&mut Triggers<T>>,
     mut writer: EventWriter<TriggerEvent>,

@@ -1,5 +1,4 @@
 use crate::player::combo::ComboCollision;
-use crate::player::health::HookedDamage;
 use crate::{animation::AnimationController, TILE_SIZE};
 use bevy::prelude::*;
 use layers::TriggersWith;

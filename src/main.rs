@@ -80,9 +80,10 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn long() -> LevelLoader {
-    LevelLoader::levels(Stack((
-        StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
-    )))
+    LevelLoader::levels(Stack((SpireStartLevel)))
+    // LevelLoader::levels(Stack((
+    //     StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
+    // )))
 }
 
 fn startup(mut commands: Commands, server: Res<AssetServer>) {
