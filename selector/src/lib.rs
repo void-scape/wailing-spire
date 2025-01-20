@@ -91,7 +91,7 @@ pub fn calculate_selectors(
         .iter()
         .filter_map(|(e, t, c)| {
             let center = c.global_absolute(t).center();
-            if center.distance(player_center) < 500.0 {
+            if center.distance(player_center) < 256.0 {
                 Some((e, center))
             } else {
                 None
