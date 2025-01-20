@@ -12,6 +12,8 @@ use bevy_tween::combinator::tween;
 use bevy_tween::prelude::*;
 use interpolate::sprite_color_to;
 use leafwing_input_manager::prelude::ActionState;
+use physics::Physics;
+use physics::PhysicsSystems;
 use physics::{prelude::*, TimeScale};
 
 pub struct MovementPlugin;
@@ -19,16 +21,16 @@ pub struct MovementPlugin;
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            Update,
+            Physics,
             (
                 (start_jump, start_dash, air_strafe),
                 brushing,
                 (
-                    wall_jump_impulse,
                     homing,
                     dashing,
                     wall_slide,
                     jumping,
+                    wall_jump_impulse,
                     ground_strafe,
                     air_damping,
                     // debug,
@@ -36,7 +38,7 @@ impl Plugin for MovementPlugin {
                     .chain(),
             )
                 .chain()
-                .in_set(PlayerSystems::Movement),
+                .before(PhysicsSystems::Velocity),
         );
     }
 }
@@ -70,7 +72,7 @@ fn homing(
                 &GlobalTransform,
                 &Collider,
                 &mut Velocity,
-                &Resolution,
+                &TotalResolution,
                 &Collision<layers::Wall>,
             ),
             With<Player>,
@@ -100,6 +102,8 @@ fn homing(
     if !collision.entities().is_empty() {
         let contact_normal = res.get().normalize_or_zero();
         let bounce_dot = (contact_normal * -1.0).dot(vector);
+
+        info!("HERE??? {bounce_dot:#?} {contact_normal:?}");
 
         if bounce_dot > settings.break_angle {
             commands.entity(player).remove::<Homing>();
@@ -192,7 +196,12 @@ fn jumping(
     player: Option<
         Single<
             (Entity, &ActionState<Action>, &mut Velocity),
-            (With<Player>, With<Jumping>, Without<Dashing>),
+            (
+                With<Player>,
+                With<Jumping>,
+                Without<Dashing>,
+                Without<Homing>,
+            ),
         >,
     >,
     time: Res<Time>,
@@ -378,7 +387,12 @@ fn air_strafe(
                 &Direction,
                 &mut AnimationController<PlayerAnimation>,
             ),
-            (With<Player>, Without<Grounded>, Without<Dashing>),
+            (
+                With<Player>,
+                Without<Grounded>,
+                Without<Dashing>,
+                Without<Homing>,
+            ),
         >,
     >,
     settings: Res<PlayerSettings>,

@@ -1,10 +1,10 @@
 use bevy::app::FixedMainScheduleOrder;
+use bevy::render::camera::PhysicalCameraParameters;
 use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 use bevy_tween::prelude::Interpolator;
 use bevy_tween::{component_tween_system, BevyTweenRegisterSystems};
 use layers::RegisterPhysicsLayer;
-use prelude::Collision;
 
 pub mod collision;
 pub mod debug;
@@ -62,8 +62,8 @@ pub enum CollisionSystems {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, SystemSet)]
 pub enum PhysicsSystems {
-    Collision,
     Velocity,
+    Collision,
 }
 
 #[derive(Debug)]
@@ -95,10 +95,12 @@ impl Plugin for PhysicsPlugin {
             .add_systems(
                 Physics,
                 (
+                    collision::clear_resolution
+                        .in_set(PhysicsSystems::Collision)
+                        .before(CollisionSystems::Resolution),
                     (gravity::apply_gravity, velocity::apply_velocity)
                         .chain()
                         .in_set(PhysicsSystems::Velocity),
-                    collision::clear_resolution.before(PhysicsSystems::Collision),
                     (
                         bevy::transform::systems::sync_simple_transforms,
                         bevy::transform::systems::propagate_transforms,
@@ -127,6 +129,9 @@ impl Plugin for PhysicsPlugin {
                     CollisionSystems::Resolution
                         .before(CollisionSystems::Grounding)
                         .before(CollisionSystems::Brushing),
+                    CollisionSystems::Resolution.in_set(PhysicsSystems::Collision),
+                    CollisionSystems::Grounding.in_set(PhysicsSystems::Collision),
+                    CollisionSystems::Brushing.in_set(PhysicsSystems::Collision),
                 ),
             );
     }

@@ -6,17 +6,14 @@ use bevy::{
     prelude::*,
 };
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
-use bevy_pixel_gfx::{camera::MainCamera, pixel_perfect::CanvasDimensions};
+use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
 use physics::{
     gravity::Gravity,
-    layers::{self, RegisterPhysicsLayer, TriggersWith},
-    prelude::Collider,
+    layers::{self},
     spatial::SpatialHash,
-    trigger::Trigger,
 };
 use player::{health::Dead, hook::OccludeHookTarget, Player};
-use selector::Selector;
 use spire::*;
 
 mod animation;
@@ -80,10 +77,9 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn long() -> LevelLoader {
-    LevelLoader::levels(Stack((SpireStartLevel)))
-    // LevelLoader::levels(Stack((
-    //     StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
-    // )))
+    LevelLoader::levels(Stack((
+        StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
+    )))
 }
 
 fn startup(mut commands: Commands, server: Res<AssetServer>) {

@@ -36,11 +36,17 @@ impl<T> Collision<T> {
 /// A vector describing the collision resolution applied to
 /// this entity during collision checking, if any.
 #[derive(Default, Component)]
-pub struct Resolution(Vec2);
+pub struct TotalResolution(Vec2);
 
-impl Resolution {
+impl TotalResolution {
     pub fn get(&self) -> Vec2 {
         self.0
+    }
+}
+
+pub(crate) fn clear_resolution(mut q: Query<&mut TotalResolution>) {
+    for mut res in q.iter_mut() {
+        res.0 = Vec2::new(0.0, 0.0);
     }
 }
 
@@ -79,7 +85,7 @@ pub struct Massive;
 /// To check for collisions, first convert this enum into an [`AbsoluteCollider`]
 /// with [`Collider::absolute`].
 #[derive(Debug, Clone, Copy, PartialEq, Component)]
-#[require(Resolution)]
+#[require(TotalResolution)]
 pub enum Collider {
     Rect(RectCollider),
     Circle(CircleCollider),
@@ -496,12 +502,6 @@ impl CollidesWith<CircleCollider> for RectCollider {
     }
 }
 
-pub fn clear_resolution(mut q: Query<&mut Resolution>) {
-    for mut res in q.iter_mut() {
-        res.0 = Vec2::default();
-    }
-}
-
 pub fn handle_collisions<T: Component>(
     map_query: Query<&SpatialHash, With<T>>,
     mut dynamic_bodies: Query<
@@ -510,7 +510,7 @@ pub fn handle_collisions<T: Component>(
             &mut Transform,
             &Collider,
             &mut Velocity,
-            &mut Resolution,
+            &mut TotalResolution,
             &mut Collision<T>,
         ),
         (With<DynamicBody>, With<layers::CollidesWith<T>>),
@@ -690,7 +690,7 @@ pub fn handle_dynamic_body_collsions<T: Component>(
             &mut Transform,
             &Collider,
             Option<&Massive>,
-            &mut Resolution,
+            &mut TotalResolution,
         ),
         (With<DynamicBody>, With<super::layers::CollidesWith<T>>),
     >,

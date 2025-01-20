@@ -67,7 +67,7 @@ impl Default for PlayerSettings {
             camera_speed: 0.1,
             wall_impulse: 400.,
             walk_speed: 130.,
-            air_accel: 0.08,
+            air_accel: 0.15,
             air_damping: 0.04,
             slide_speed: 40.,
             wall_stick_time: 0.20,
