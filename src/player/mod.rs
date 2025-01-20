@@ -16,6 +16,7 @@ use leafwing_input_manager::{
 };
 use movement::BrushingMove;
 use physics::{prelude::*, trigger::Trigger};
+use physics::{Physics, PhysicsSystems};
 use std::hash::Hash;
 
 mod camera;
@@ -66,6 +67,7 @@ impl Plugin for PlayerPlugin {
                         hook::move_hook,
                         hook::terminal_velocity,
                         hook::collision_hook,
+                        selector::clear_removed_entities,
                         ::selector::calculate_selectors,
                         selector::trigger_hook,
                         combo::combo,
@@ -80,10 +82,10 @@ impl Plugin for PlayerPlugin {
                 ),
             )
             .add_systems(
-                PostUpdate,
+                Physics,
                 (
                     selector::add_selectors,
-                    camera::move_camera.before(TransformSystem::TransformPropagate),
+                    camera::move_camera.after(PhysicsSystems::Collision),
                 ),
             );
     }

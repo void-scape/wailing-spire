@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::prelude::*;
 use itertools::Itertools;
 use physics::collision::Collider;
@@ -28,10 +30,32 @@ pub struct MaxSelectors(pub usize);
 #[derive(Resource, Default)]
 pub struct SelectorTick(usize);
 
-#[derive(Default, Component, Clone, Copy)]
+#[derive(Default, Component)]
 pub struct SelectorInfo {
     pub target: Option<Entity>,
     tick: usize,
+    history: VecDeque<Entity>,
+}
+
+impl SelectorInfo {
+    fn set_target(&mut self, target: Entity, tick: &mut SelectorTick) {
+        self.clear_target();
+        tick.0 += 1;
+        self.tick = tick.0;
+
+        self.target = Some(target);
+    }
+
+    fn clear_target(&mut self) {
+        if let Some(last_target) = self.target.take() {
+            if !self.history.contains(&last_target) {
+                if self.history.len() > 5 {
+                    self.history.pop_front();
+                }
+                self.history.push_back(last_target);
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -40,7 +64,6 @@ struct SelectorScore {
     stability: f32,
     // prefer selectors that haven't been changed recently
     recency: f32,
-
     // prefer selectors that have previously selected an entity
     familiarity: f32,
 }
@@ -67,7 +90,7 @@ impl TargetScores {
     pub fn sum(&self) -> f32 {
         self.distance
             + self.angle
-            + self.selector.familiarity
+            + self.selector.familiarity * 2.0
             + self.selector.recency
             + self.selector.stability * 2.0
             + self.distance_above_player
@@ -99,7 +122,7 @@ pub fn calculate_selectors(
         })
         .collect();
 
-    let mut collected_selectors: Vec<_> = selectors.iter().map(|(s, i)| (*s, *i)).collect();
+    let mut collected_selectors: Vec<_> = selectors.iter().map(|(s, i)| (*s, i)).collect();
     collected_selectors.sort_by_key(|pair| pair.0);
     let mut processed_targets = Vec::new();
 
@@ -142,6 +165,10 @@ pub fn calculate_selectors(
                 if target.selector.is_some_and(|s| s == *selector) {
                     eval.selector.stability += 1.0 / pool_size as f32;
                 }
+
+                if info.history.contains(&target.entity) {
+                    eval.selector.familiarity += 1.0 / pool_size as f32;
+                }
             }
 
             if eval.distance > greatest_distance {
@@ -168,18 +195,21 @@ pub fn calculate_selectors(
     }
 
     all_evaluations.sort_unstable_by(|a, b| a.2.sum().total_cmp(&b.2.sum()).reverse());
+    let best = all_evaluations.into_iter().next();
 
-    if let Some(best) = all_evaluations.first() {
+    if let Some((targets, scored_selectors, _)) = best {
+        let scored_selectors = scored_selectors
+            .into_iter()
+            .map(|s| s.0)
+            .collect::<Vec<_>>();
+
         for (s, mut info) in selectors.iter_mut() {
-            let position = best.1.iter().position(|p| p.0 == *s);
+            let position = scored_selectors.iter().position(|p| *p == *s);
 
             if let Some(position) = position {
-                let target = best.0[position].entity;
-                selector_tick.0 += 1;
-                info.tick = selector_tick.0;
-                info.target = Some(target);
+                info.set_target(targets[position].entity, &mut selector_tick);
             } else {
-                info.target = None;
+                info.clear_target();
             }
         }
     }
