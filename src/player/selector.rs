@@ -4,7 +4,7 @@ use super::{
 };
 use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 use leafwing_input_manager::prelude::ActionState;
-use selector::{MaxSelectors, Selector, SelectorInfo};
+use selector::{MaxSelectors, Selector, SelectorInfo, SelectorTarget};
 
 pub(super) fn trigger_hook(
     player: Query<(Entity, &Velocity, &ActionState<Action>, Option<&Homing>), With<Player>>,
@@ -54,6 +54,17 @@ pub(super) fn trigger_hook(
 pub(super) fn spawn_selectors(max: Res<MaxSelectors>, mut commands: Commands) {
     for i in 0..max.0 {
         commands.spawn(Selector(i));
+    }
+}
+
+pub(super) fn clear_removed_entities(
+    mut q: Query<&mut SelectorInfo>,
+    targets: Query<Entity, With<SelectorTarget>>,
+) {
+    for mut info in q.iter_mut() {
+        if info.target.is_some_and(|t| targets.get(t).is_err()) {
+            info.target = None;
+        }
     }
 }
 
