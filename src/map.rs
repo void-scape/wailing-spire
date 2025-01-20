@@ -1,5 +1,5 @@
+use crate::StartLevel;
 use crate::{spire::*, LEVEL_SIZE, TILE_SIZE};
-use crate::{RightLevel, StartLevel};
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashMap;
 use bevy_ldtk_scene::{levels::LevelSet, prelude::LevelMetaExt, world::LevelUid};

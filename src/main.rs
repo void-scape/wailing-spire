@@ -72,6 +72,12 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
     }
 }
 
+fn long() -> LevelLoader {
+    LevelLoader::levels(Stack((
+        StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
+    )))
+}
+
 fn startup(mut commands: Commands, server: Res<AssetServer>) {
     let map = MapGen::<3, 5>::default().gen().trim_edge();
     map::draw(&map);
@@ -81,10 +87,7 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
         World(server.load("ldtk/spire.ron")),
         // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
         // LevelLoader::levels_with_offset(map, Vec2::ZERO),
-        LevelLoader::levels(Stack((
-            StartLevel, UpLevel,
-            // TunnelLevel, TunnelLevel
-        ))),
+        long(),
     ));
 
     commands.spawn((
@@ -107,10 +110,7 @@ fn reset(
             World(server.load("ldtk/spire.ron")),
             // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
             // LevelLoader::levels_with_offset(map, Vec2::ZERO),
-            LevelLoader::levels(Stack((
-                StartLevel, UpLevel,
-                // TunnelLevel, TunnelLevel
-            ))),
+            long(),
         ));
     }
 }
