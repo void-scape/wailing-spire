@@ -43,11 +43,22 @@ impl Plugin for MovementPlugin {
     }
 }
 
+#[derive(Debug)]
+enum HomingState {
+    Hooking,
+    Moving,
+    Exploding,
+}
+
 /// The player is homing in on a hooked target.
 #[derive(Debug, Component)]
 pub struct Homing {
     target: Entity,
     starting_velocity: Vec2,
+    state: HomingState,
+    timer: Timer,
+    ticks: usize,
+    average_direction: Vec2,
 }
 
 impl Homing {
@@ -55,6 +66,10 @@ impl Homing {
         Self {
             target,
             starting_velocity,
+            state: HomingState::Hooking,
+            timer: Timer::new(Duration::from_millis(120), TimerMode::Once),
+            ticks: 0,
+            average_direction: Vec2::default(),
         }
     }
 
@@ -81,29 +96,40 @@ fn homing(
     target: Query<(&GlobalTransform, &Collider, Option<&Velocity>), Without<Player>>,
     mut commands: Commands,
     settings: Res<PlayerSettings>,
+    time: Res<Time>,
+    timescale: Single<&TimeScale>,
+    mut hook_collision: EventReader<HookTargetCollision>,
 ) {
+    let timescale = timescale.into_inner();
+
     let Some((player, mut homing, player_trans, player_collider, mut player_vel, res, collision)) =
         player.map(|p| p.into_inner())
     else {
         return;
     };
 
-    let Ok((target_trans, target_collider, target_vel)) = target.get(homing.target) else {
-        warn!("A homing target is missing one or more components");
-        return;
+    let (vector, target_vel) = match target.get(homing.target) {
+        Ok((target_trans, target_collider, target_vel)) => {
+            let target = target_trans.compute_transform();
+            let abs_target = target_collider.absolute(&target);
+            let abs_player = player_collider.global_absolute(player_trans);
+
+            let vector = (abs_target.center() - abs_player.center()).normalize_or_zero();
+
+            homing.average_direction += vector;
+            homing.ticks += 1;
+
+            (vector, target_vel)
+        }
+        Err(_) => {
+            warn!("A homing target is missing one or more components or doesn't exist");
+            (homing.average_direction.normalize_or_zero(), None)
+        }
     };
-
-    let target = target_trans.compute_transform();
-    let abs_target = target_collider.absolute(&target);
-    let abs_player = player_collider.global_absolute(player_trans);
-
-    let vector = (abs_target.center() - abs_player.center()).normalize_or_zero();
 
     if !collision.entities().is_empty() {
         let contact_normal = res.get().normalize_or_zero();
         let bounce_dot = (contact_normal * -1.0).dot(vector);
-
-        info!("HERE??? {bounce_dot:#?} {contact_normal:?}");
 
         if bounce_dot > settings.break_angle {
             commands.entity(player).remove::<Homing>();
@@ -113,11 +139,35 @@ fn homing(
         }
     }
 
-    // we have some velocity damping
-    homing.starting_velocity *= 0.97;
+    // // we have some velocity damping
+    // homing.starting_velocity *= 0.97;
+    homing.average_direction += vector;
+    homing.ticks += 1;
 
-    player_vel.0 =
-        vector * 500. + target_vel.map(|t| t.0).unwrap_or_default() + homing.starting_velocity;
+    match homing.state {
+        HomingState::Hooking => {
+            player_vel.0 = Vec2::default();
+            homing
+                .timer
+                .tick(Duration::from_secs_f32(time.delta_secs() * timescale.0));
+
+            if homing.timer.just_finished() {
+                homing.state = HomingState::Moving;
+            }
+        }
+        HomingState::Moving => {
+            player_vel.0 = vector * 600. + target_vel.map(|t| t.0).unwrap_or_default();
+
+            if let Some(_ev) = hook_collision.read().last() {
+                homing.state = HomingState::Exploding;
+                player_vel.0 = Vec2::default();
+            }
+        }
+        HomingState::Exploding => {
+            player_vel.0 = (homing.average_direction / homing.ticks as f32) * 350.;
+            commands.entity(player).remove::<Homing>();
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Component)]

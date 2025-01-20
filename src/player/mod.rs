@@ -29,7 +29,7 @@ mod input;
 mod movement;
 mod selector;
 
-pub const MAX_VEL: f32 = 300.;
+pub const MAX_VEL: f32 = 750.;
 
 #[derive(Resource, Reflect, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]

@@ -1,3 +1,5 @@
+use crate::prelude::Velocity;
+
 use super::prelude::Acceleration;
 use bevy::prelude::*;
 
@@ -23,9 +25,15 @@ pub struct Gravitational;
 
 pub fn apply_gravity(
     gravity: Res<Gravity>,
-    mut object_query: Query<&mut Acceleration, (With<Gravitational>, Without<Grounded>)>,
+    mut object_query: Query<
+        (&mut Acceleration, &Velocity),
+        (With<Gravitational>, Without<Grounded>),
+    >,
 ) {
-    for mut acceleration in object_query.iter_mut() {
-        acceleration.apply_force(gravity.0);
+    let max_gravity = -300.;
+    for (mut acceleration, velocity) in object_query.iter_mut() {
+        if velocity.0.y > max_gravity {
+            acceleration.apply_force(gravity.0);
+        }
     }
 }

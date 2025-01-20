@@ -287,15 +287,15 @@ pub(super) fn collision_hook(
     mut writer: EventWriter<HookTargetCollision>,
 ) {
     let Ok((entity, homing)) = player.get_single() else {
-        let _ = reader.clear();
+        reader.clear();
         return;
     };
 
     for event in reader.read() {
         if event.trigger == entity {
-            if homing.target() == event.target {
-                commands.entity(entity).remove::<super::Homing>();
-            }
+            // if homing.target() == event.target {
+            //     commands.entity(entity).remove::<super::Homing>();
+            // }
 
             writer.send(HookTargetCollision {
                 target: event.target,
