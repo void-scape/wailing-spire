@@ -25,21 +25,12 @@ pub(super) fn combo(
     mut commands: Commands,
     server: Res<AssetServer>,
     mut reader: EventReader<HookTargetCollision>,
-    mut player: Query<(
-        Entity,
-        &mut Combo,
-        Option<&Homing>,
-        Option<&Grounded>,
-        Option<&BrushingLeft>,
-        Option<&BrushingRight>,
-    )>,
+    mut player: Query<(Entity, &mut Combo, Option<&Homing>, Option<&Grounded>)>,
     combo_query: Query<Entity, With<ComboCollision>>,
     text_query: Query<Entity, With<ComboText>>,
     animation_query: Query<Entity, With<TextAnimation>>,
 ) {
-    let Ok((entity, mut combo, homing, grounded, _brushing_left, _brushing_right)) =
-        player.get_single_mut()
-    else {
+    let Ok((entity, mut combo, homing, grounded)) = player.get_single_mut() else {
         return;
     };
 

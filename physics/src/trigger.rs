@@ -80,7 +80,7 @@ pub fn emit_trigger_states(
 
 pub fn handle_triggers<T: Component>(
     triggers: Query<(Entity, &GlobalTransform, &Trigger, &TriggersWith<T>)>,
-    bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggersWith<T>)>,
+    bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggersWith<T>), Without<Trigger>>,
     mut writer: EventWriter<TriggerEvent>,
 ) {
     let dynamic_body_map = SpatialHash::new_with(

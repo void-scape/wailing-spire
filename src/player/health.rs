@@ -1,4 +1,4 @@
-use super::{hook::TerminalVelocity, Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
+use super::{movement::Homing, Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
 use crate::{animation::AnimationController, tween::DespawnFinished};
 use bevy::{
     input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
@@ -88,7 +88,7 @@ pub(super) fn death(
     };
 
     if health.dead() {
-        println!("You Died!");
+        error!("You Died!");
 
         commands.spawn((
             AudioPlayer::new(server.load("audio/sfx/death.wav")),
@@ -112,7 +112,7 @@ pub(super) fn no_shield_collision(
             &mut AnimationController<PlayerAnimation>,
             &mut Acceleration,
         ),
-        (With<Player>, Without<TerminalVelocity>),
+        (With<Player>, Without<Homing>),
     >,
     transform_query: Query<&GlobalTransform>,
     mut enter: EventReader<TriggerEnter>,
@@ -124,6 +124,7 @@ pub(super) fn no_shield_collision(
     let Ok((entity, transform, mut health, mut animations, mut acceleration)) =
         player.get_single_mut()
     else {
+        enter.clear();
         return;
     };
 
@@ -131,7 +132,7 @@ pub(super) fn no_shield_collision(
         if event.trigger == entity {
             health.damage(1);
             animations.set_animation_one_shot(PlayerAnimation::Hit);
-            println!("Ouch! [{}/{}]", health.current(), health.max());
+            error!("Ouch! [{}/{}]", health.current(), health.max());
 
             let scale = time_scale.into_target();
             commands
@@ -171,7 +172,7 @@ pub(super) fn no_shield_collision(
             let diff = (transform.translation() - target_t.translation())
                 .xy()
                 .normalize_or_zero();
-            acceleration.apply_force(diff * 500.);
+            // acceleration.apply_force(diff * 500.);
         }
     }
 }

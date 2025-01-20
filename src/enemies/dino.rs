@@ -13,7 +13,7 @@ const SPEED: f32 = 50.;
 #[require(AnimationController<DinoAnimation>(animation_controller))]
 #[require(Velocity(velocity), DynamicBody, Collider(collider), TriggersWith<layers::Player>)]
 #[require(layers::CollidesWith<layers::Wall>)]
-#[require(SelectorTarget, ComboCollision, HookedDamage)]
+#[require(SelectorTarget, ComboCollision)]
 #[require(super::DespawnHooked)]
 pub struct Dino;
 

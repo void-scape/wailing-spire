@@ -1,5 +1,4 @@
-use super::params::CAMERA_SPEED;
-use super::Player;
+use super::{Player, PlayerSettings};
 use crate::TILE_SIZE;
 use bevy::prelude::*;
 use bevy_ldtk_scene::extract::levels::LevelMeta;
@@ -31,6 +30,7 @@ pub fn move_camera(
     mut cam: Query<&mut Transform, With<MainCamera>>,
     player: Query<(&GlobalTransform, &CurrentLevel), (With<Player>, Without<MainCamera>)>,
     level_query: Query<(&GlobalTransform, &Level)>,
+    settings: Res<PlayerSettings>,
 ) {
     let Ok(mut cam) = cam.get_single_mut() else {
         return;
@@ -50,6 +50,6 @@ pub fn move_camera(
         let target_position = Vec3::new(x, player.translation().y + TILE_SIZE * 1.5, 0.);
         let delta = target_position - cam.translation;
 
-        cam.translation += delta * CAMERA_SPEED;
+        cam.translation += delta * settings.camera_speed;
     }
 }

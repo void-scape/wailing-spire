@@ -1,9 +1,8 @@
-use super::health::Health;
 use super::movement::Homing;
-use super::params::*;
+use super::PlayerSettings;
 use super::{health::Dead, Collider, CollidesWith, Player, Velocity};
 use crate::TILE_SIZE;
-use bevy::{prelude::*, sprite::Anchor};
+use bevy::prelude::*;
 use physics::spatial::SpatialHash;
 use physics::trigger::TriggerEnter;
 use selector::SelectorTarget;
@@ -62,8 +61,8 @@ pub(super) struct ViableTarget {
 }
 
 /// Player is moving fast enough to _kill_ enemies.
-#[derive(Component)]
-pub struct TerminalVelocity;
+// #[derive(Component)]
+// pub struct TerminalVelocity;
 
 pub(super) fn spawn_hook(server: Res<AssetServer>, mut commands: Commands) {
     let mut chains = Vec::new();
@@ -89,6 +88,7 @@ pub(super) fn gather_viable_targets(
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
     spatial_hash_query: Query<&SpatialHash, With<OccludeHookTarget>>,
+    settings: Res<PlayerSettings>,
 ) {
     viable.0.clear();
 
@@ -107,7 +107,7 @@ pub(super) fn gather_viable_targets(
                     .distance_squared(player.translation()),
             )
         })
-        .filter(|t| t.2 < TARGET_THRESHOLD * TARGET_THRESHOLD)
+        .filter(|t| t.2 < settings.target_threshold * settings.target_threshold)
         .filter(|t| {
             spatial_hash_query.iter().all(|hash| {
                 let pxy = player.translation().xy();
@@ -242,37 +242,37 @@ pub(super) fn move_hook(
     }
 }
 
-pub(super) fn terminal_velocity(
-    mut commands: Commands,
-    player: Option<Single<(Entity, &Velocity), With<Player>>>,
-    server: Res<AssetServer>,
-    mut shielded: Local<Option<Entity>>,
-) {
-    if let Some((entity, vel)) = player.map(|p| p.into_inner()) {
-        if vel.0.length_squared() >= TERMINAL_VELOCITY2_THRESHOLD {
-            if shielded.is_none() {
-                let shield = commands
-                    .spawn(Sprite {
-                        image: server.load("sprites/shield.png"),
-                        anchor: Anchor::TopLeft,
-                        ..Default::default()
-                    })
-                    .id();
-                commands
-                    .entity(entity)
-                    .insert(TerminalVelocity)
-                    .add_child(shield);
-                *shielded = Some(shield);
-            }
-        } else if let Some(shield) = *shielded {
-            commands.entity(entity).remove::<TerminalVelocity>();
-            if let Some(mut entity) = commands.get_entity(shield) {
-                entity.despawn();
-            }
-            *shielded = None;
-        }
-    }
-}
+// pub(super) fn terminal_velocity(
+//     mut commands: Commands,
+//     player: Option<Single<(Entity, &Velocity), With<Player>>>,
+//     server: Res<AssetServer>,
+//     mut shielded: Local<Option<Entity>>,
+// ) {
+//     if let Some((entity, vel)) = player.map(|p| p.into_inner()) {
+//         if vel.0.length_squared() >= TERMINAL_VELOCITY2_THRESHOLD {
+//             if shielded.is_none() {
+//                 let shield = commands
+//                     .spawn(Sprite {
+//                         image: server.load("sprites/shield.png"),
+//                         anchor: Anchor::TopLeft,
+//                         ..Default::default()
+//                     })
+//                     .id();
+//                 commands
+//                     .entity(entity)
+//                     .insert(TerminalVelocity)
+//                     .add_child(shield);
+//                 *shielded = Some(shield);
+//             }
+//         } else if let Some(shield) = *shielded {
+//             commands.entity(entity).remove::<TerminalVelocity>();
+//             if let Some(mut entity) = commands.get_entity(shield) {
+//                 entity.despawn();
+//             }
+//             *shielded = None;
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, Copy, Event)]
 pub struct HookTargetCollision {
@@ -282,24 +282,25 @@ pub struct HookTargetCollision {
 
 pub(super) fn collision_hook(
     mut commands: Commands,
-    targets: Query<Entity>,
-    player: Query<(Entity, Option<&TerminalVelocity>), (With<Player>, With<Homing>, Without<Dead>)>,
+    player: Query<(Entity, &Homing), (With<Player>, Without<Dead>)>,
     mut reader: EventReader<TriggerEnter>,
     mut writer: EventWriter<HookTargetCollision>,
 ) {
-    let Ok((entity, terminal_velocity)) = player.get_single() else {
+    let Ok((entity, homing)) = player.get_single() else {
+        let _ = reader.clear();
         return;
     };
 
     for event in reader.read() {
         if event.trigger == entity {
-            if targets.get(event.target).is_ok() {
+            if homing.target() == event.target {
                 commands.entity(entity).remove::<super::Homing>();
-                writer.send(HookTargetCollision {
-                    target: event.target,
-                    kill_target: terminal_velocity.is_some(),
-                });
             }
+
+            writer.send(HookTargetCollision {
+                target: event.target,
+                kill_target: true,
+            });
         }
     }
 }

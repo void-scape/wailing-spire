@@ -122,6 +122,22 @@ impl<A: Animation> AnimationController<A> {
     }
 }
 
+impl<A: Animation + PartialEq> AnimationController<A> {
+    pub fn set_animation_checked(&mut self, animation: A) {
+        if self
+            .active_index
+            .as_ref()
+            .is_none_or(|(a, _, _)| a != &animation)
+        {
+            if let Some(range) = self.get_range(&animation) {
+                self.active_index = Some((animation.clone(), range, range.0));
+                self.one_shot = false;
+                self.timer.reset();
+            }
+        }
+    }
+}
+
 fn animation<A: Animation>(
     mut query: Query<(&mut Sprite, &mut AnimationController<A>)>,
     time: Res<Time>,
