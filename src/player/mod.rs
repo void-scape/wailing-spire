@@ -65,7 +65,7 @@ impl Default for PlayerSettings {
     fn default() -> Self {
         Self {
             camera_speed: 0.1,
-            wall_impulse: 400.,
+            wall_impulse: 300.,
             walk_speed: 130.,
             air_accel: 0.15,
             air_damping: 0.04,

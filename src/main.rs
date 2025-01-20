@@ -25,8 +25,8 @@ mod spikes;
 mod spire;
 mod tween;
 
-const WIDTH: f32 = 384.;
-const HEIGHT: f32 = 216.;
+const WIDTH: f32 = 440.;
+const HEIGHT: f32 = 248.;
 const TILE_SIZE: f32 = 16.;
 const LEVEL_SIZE: Vec2 = Vec2::splat(20.);
 

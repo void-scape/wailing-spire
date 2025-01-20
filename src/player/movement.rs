@@ -122,7 +122,7 @@ fn homing(
             (vector, target_vel)
         }
         Err(_) => {
-            warn!("A homing target is missing one or more components or doesn't exist");
+            // warn!("A homing target is missing one or more components or doesn't exist");
             (homing.average_direction.normalize_or_zero(), None)
         }
     };
@@ -156,7 +156,7 @@ fn homing(
             }
         }
         HomingState::Moving => {
-            player_vel.0 = vector * 600. + target_vel.map(|t| t.0).unwrap_or_default();
+            player_vel.0 = vector * 700. + target_vel.map(|t| t.0).unwrap_or_default();
 
             if let Some(_ev) = hook_collision.read().last() {
                 homing.state = HomingState::Exploding;
