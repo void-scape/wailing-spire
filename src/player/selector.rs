@@ -317,7 +317,6 @@ pub(super) fn manage_offscreen_selectors(
             if !offscreen_entity {
                 let texture = textures.sprite(&input, &sprite.0);
                 commands.spawn((OffscreenIndicator(sprite.0), texture));
-                info!("selector {:?} offscreen!", sprite.0);
             }
         }
     }
@@ -332,7 +331,10 @@ pub(super) fn move_offscreen_indicators(
         return;
     };
 
-    let cam = cam_collider.global_absolute(cam_transform).get_aabb();
+    let cam = cam_collider
+        .global_absolute(cam_transform)
+        .get_aabb()
+        .expand(0.925);
     let cam_center = cam.center();
 
     for (offscreen, mut transform) in offscreen_indicators.iter_mut() {
@@ -350,7 +352,9 @@ pub(super) fn move_offscreen_indicators(
             continue;
         };
 
-        transform.translation.x = intersection.x - 12.0;
-        transform.translation.y = intersection.y + 12.0;
+        let sprite_offset = Vec2::new(-12.0, 16.0);
+        let new_translation = (intersection + sprite_offset).extend(50.0);
+
+        transform.translation = new_translation;
     }
 }

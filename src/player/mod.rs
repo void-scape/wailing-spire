@@ -166,7 +166,9 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Physics,
                 (
-                    camera::move_camera,
+
+                    camera::move_camera.before(PhysicsSystems::Velocity),
+                (
                     (
                         selector::manage_offscreen_selectors,
                         selector::move_offscreen_indicators,
@@ -174,6 +176,7 @@ impl Plugin for PlayerPlugin {
                         .chain(),
                 )
                     .after(PhysicsSystems::Collision),
+                )
             );
     }
 }
