@@ -54,10 +54,7 @@ pub(super) fn combo(
         combo.0 = 0;
     }
 
-    for _ in reader
-        .read()
-        .filter(|c| combo_query.get(c.entity()).is_ok())
-    {
+    for _ in reader.read().filter(|c| combo_query.get(c.target).is_ok()) {
         combo.0 += 1;
 
         commands.spawn((

@@ -1,8 +1,11 @@
+use super::health::Health;
+use super::movement::Homing;
 use super::params::*;
 use super::{health::Dead, Collider, CollidesWith, Player, Velocity};
 use crate::TILE_SIZE;
 use bevy::{prelude::*, sprite::Anchor};
 use physics::spatial::SpatialHash;
+use physics::trigger::TriggerEnter;
 use selector::SelectorTarget;
 
 #[derive(Debug, Resource)]
@@ -273,70 +276,30 @@ pub(super) fn terminal_velocity(
 
 #[derive(Debug, Clone, Copy, Event)]
 pub struct HookTargetCollision {
-    entity: Entity,
-    shield: PlayerShield,
-}
-
-impl HookTargetCollision {
-    pub fn entity(&self) -> Entity {
-        self.entity
-    }
-
-    pub fn shield_up(&self) -> bool {
-        matches!(self.shield, PlayerShield::Up)
-    }
-
-    pub fn shield_down(&self) -> bool {
-        matches!(self.shield, PlayerShield::Down)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerShield {
-    Up,
-    Down,
+    pub target: Entity,
+    pub kill_target: bool,
 }
 
 pub(super) fn collision_hook(
     mut commands: Commands,
-    targets: Query<(Entity, &GlobalTransform, &Collider)>,
-    player: Query<
-        (
-            Entity,
-            &GlobalTransform,
-            &Collider,
-            &super::Homing,
-            Option<&TerminalVelocity>,
-        ),
-        (With<Player>, Without<Dead>),
-    >,
+    targets: Query<Entity>,
+    player: Query<(Entity, Option<&TerminalVelocity>), (With<Player>, With<Homing>, Without<Dead>)>,
+    mut reader: EventReader<TriggerEnter>,
     mut writer: EventWriter<HookTargetCollision>,
 ) {
-    let Ok((player_entity, player, player_collider, selected_target, terminal_velocity)) =
-        player.get_single()
-    else {
+    let Ok((entity, terminal_velocity)) = player.get_single() else {
         return;
     };
 
-    let Ok((targ_entity, target, target_collider)) = targets.get(selected_target.target()) else {
-        return;
-    };
-
-    let abs_target = target_collider.global_absolute(target);
-    let abs_player = player_collider.global_absolute(player);
-
-    if abs_player.expand(2.).collides_with(&abs_target) {
-        if terminal_velocity.is_some() {
-            commands.entity(player_entity).remove::<super::Homing>();
-            writer.send(HookTargetCollision {
-                entity: targ_entity,
-                shield: PlayerShield::Up,
-            });
-        } else {
-            writer.send(HookTargetCollision {
-                entity: targ_entity,
-                shield: PlayerShield::Down,
-            });
+    for event in reader.read() {
+        if event.trigger == entity {
+            if targets.get(event.target).is_ok() {
+                commands.entity(entity).remove::<super::Homing>();
+                writer.send(HookTargetCollision {
+                    target: event.target,
+                    kill_target: terminal_velocity.is_some(),
+                });
+            }
         }
     }
 }

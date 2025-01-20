@@ -386,7 +386,15 @@ fn air_strafe(
 
 fn ground_strafe(
     player: Option<
-        Single<(&mut Velocity, &Direction), (With<Player>, With<Grounded>, Without<Dashing>)>,
+        Single<
+            (&mut Velocity, &Direction),
+            (
+                With<Player>,
+                With<Grounded>,
+                Without<Dashing>,
+                Without<Homing>,
+            ),
+        >,
     >,
 ) {
     let Some((mut velocity, direction)) = player.map(|p| p.into_inner()) else {

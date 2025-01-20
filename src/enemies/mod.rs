@@ -32,9 +32,9 @@ fn hook_collisions(
     mut screen_shake: ResMut<screen_shake::ScreenShake>,
     despawn_query: Query<&DespawnHooked>,
 ) {
-    for collision in reader.read().filter(|c| c.shield_up()) {
-        if despawn_query.get(collision.entity()).is_ok() {
-            commands.entity(collision.entity()).despawn_recursive();
+    for collision in reader.read().filter(|c| c.kill_target) {
+        if despawn_query.get(collision.target).is_ok() {
+            commands.entity(collision.target).despawn_recursive();
             screen_shake
                 .max_offset(75.)
                 .camera_decay(0.9)

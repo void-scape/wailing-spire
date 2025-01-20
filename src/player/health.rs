@@ -1,4 +1,4 @@
-use super::{Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
+use super::{hook::TerminalVelocity, Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
 use crate::{animation::AnimationController, tween::DespawnFinished};
 use bevy::{
     input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
@@ -102,7 +102,7 @@ pub(super) fn death(
     }
 }
 
-pub(super) fn hook_collision(
+pub(super) fn no_shield_collision(
     mut commands: Commands,
     mut player: Query<
         (
@@ -112,10 +112,9 @@ pub(super) fn hook_collision(
             &mut AnimationController<PlayerAnimation>,
             &mut Acceleration,
         ),
-        With<Player>,
+        (With<Player>, Without<TerminalVelocity>),
     >,
     transform_query: Query<&GlobalTransform>,
-    // damage_query: Query<&HookedDamage>,
     mut enter: EventReader<TriggerEnter>,
     time_scale: Single<Entity, With<TimeScale>>,
     mut screen_shake: ResMut<screen_shake::ScreenShake>,
@@ -128,7 +127,6 @@ pub(super) fn hook_collision(
         return;
     };
 
-    // TODO: no damage on shield, knockback, slow time (`TimeScale`)
     for event in enter.read() {
         if event.trigger == entity {
             health.damage(1);
@@ -176,15 +174,4 @@ pub(super) fn hook_collision(
             acceleration.apply_force(diff * 500.);
         }
     }
-
-    // for _ in reader
-    //     .read()
-    //     .filter(|c| c.shield_down() && damage_query.get(c.entity()).is_ok())
-    // {
-    //     // TODO: trigger collision for health + trigger must leave before you get hit again +
-    //     // kickback
-    //     health.damage(1);
-    //     animations.set_animation_one_shot(PlayerAnimation::Hit);
-    //     println!("Ouch! [{}/{}]", health.current(), health.max());
-    // }
 }

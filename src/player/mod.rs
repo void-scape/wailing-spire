@@ -1,7 +1,7 @@
 use self::movement::Homing;
 use self::params::*;
 use crate::animation::{AnimationController, AnimationPlugin};
-use crate::TILE_SIZE;
+use crate::{spikes, TILE_SIZE};
 use ::selector::Selector;
 use bevy::prelude::*;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
@@ -75,11 +75,12 @@ impl Plugin for PlayerPlugin {
                         .chain(),
                     camera::update_current_level,
                     health::death,
-                    health::hook_collision,
                     hook::show_hook,
                     direction.before(PlayerSystems::Movement),
                     flip_sprite.after(PlayerSystems::Movement),
-                ),
+                    health::no_shield_collision,
+                )
+                    .chain(),
             )
             .add_systems(
                 Physics,
@@ -98,9 +99,7 @@ impl Plugin for PlayerPlugin {
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
-#[require(layers::CollidesWith<layers::Wall>,
-    // layers::CollidesWith<spikes::Spike>
-)]
+#[require(layers::CollidesWith<layers::Wall>, layers::CollidesWith<spikes::Spike>)]
 #[require(layers::Player)]
 #[require(BrushingMove)]
 #[require(Combo)]
