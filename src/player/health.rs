@@ -1,9 +1,5 @@
 use super::{Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
-use crate::{
-    animation::AnimationController,
-    physics::{self, TimeScale},
-    tween::DespawnFinished,
-};
+use crate::{animation::AnimationController, tween::DespawnFinished};
 use bevy::{
     input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
     prelude::*,
@@ -15,6 +11,7 @@ use bevy_tween::{
     tween::IntoTarget,
 };
 use leafwing_input_manager::prelude::ActionState;
+use physics::TimeScale;
 use std::time::Duration;
 
 /// Deal damage to player if hooked and collided with.

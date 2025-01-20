@@ -3616,6 +3616,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "physics"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_pixel_gfx",
+ "bevy_tween",
+ "rand",
+ "smallvec",
+]
+
+[[package]]
 name = "pin-project"
 version = "1.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4106,6 +4117,15 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "selector"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "itertools 0.14.0",
+ "physics",
+]
 
 [[package]]
 name = "self_cell"
@@ -4734,9 +4754,10 @@ dependencies = [
  "bevy_ldtk_scene",
  "bevy_pixel_gfx",
  "bevy_tween",
- "itertools 0.14.0",
  "leafwing-input-manager",
+ "physics",
  "rand",
+ "selector",
  "serde",
  "smallvec",
 ]

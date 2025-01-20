@@ -12,7 +12,8 @@ rand = "0.8.5"
 bevy_tween = "0.7.0"
 smallvec = "1.13.2"
 bevy_framepace = "0.18"
-itertools = "0.14"
+physics = { path = "physics" }
+selector = { path = "selector" }
 
 [dependencies.bevy]
 version = "0.15"

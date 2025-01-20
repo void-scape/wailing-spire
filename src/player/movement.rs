@@ -4,14 +4,13 @@ use super::Action;
 use super::Direction;
 use super::Player;
 use super::PlayerSystems;
-use crate::physics::prelude::*;
-use crate::physics::TimeScale;
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
 use bevy_tween::combinator::tween;
 use bevy_tween::prelude::*;
 use interpolate::sprite_color_to;
 use leafwing_input_manager::prelude::ActionState;
+use physics::{prelude::*, TimeScale};
 
 pub struct MovementPlugin;
 
@@ -31,6 +30,7 @@ impl Plugin for MovementPlugin {
                     ground_strafe,
                     air_damping,
                 )
+                    .chain()
                     .after(brushing),
             )
                 .in_set(PlayerSystems::Movement),

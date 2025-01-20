@@ -1,10 +1,11 @@
 use crate::player::combo::ComboCollision;
 use crate::player::health::HookedDamage;
-use crate::player::hook::HookTarget;
-use crate::{animation::AnimationController, physics::prelude::*, TILE_SIZE};
+use crate::{animation::AnimationController, TILE_SIZE};
 use bevy::prelude::*;
 use layers::TriggersWith;
+use physics::prelude::*;
 use rand::Rng;
+use selector::SelectorTarget;
 
 const SPEED: f32 = 50.;
 
@@ -12,7 +13,7 @@ const SPEED: f32 = 50.;
 #[require(AnimationController<DinoAnimation>(animation_controller))]
 #[require(Velocity(velocity), DynamicBody, Collider(collider), TriggersWith<layers::Player>)]
 #[require(layers::CollidesWith<layers::Wall>)]
-#[require(HookTarget, ComboCollision, HookedDamage)]
+#[require(SelectorTarget, ComboCollision, HookedDamage)]
 #[require(super::DespawnHooked)]
 pub struct Dino;
 

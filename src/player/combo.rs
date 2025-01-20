@@ -17,7 +17,7 @@ pub struct ComboText;
 #[derive(Component)]
 pub struct TextAnimation;
 
-/// An entity with this marker (and [`Collider`](crate::physics::collision::Collider)) will increase the player's [`Combo`] score when collided with.
+/// An entity with this marker (and [`Collider`](physics::collision::Collider)) will increase the player's [`Combo`] score when collided with.
 #[derive(Default, Component)]
 pub struct ComboCollision;
 
@@ -43,8 +43,7 @@ pub(super) fn combo(
         return;
     };
 
-    if combo.0 > 0 && grounded.is_some() && homing.is_none()
-    {
+    if combo.0 > 0 && grounded.is_some() && homing.is_none() {
         commands.spawn((
             AudioPlayer::new(server.load("audio/sfx/combo.wav")),
             PlaybackSettings::DESPAWN.with_speed(1. + combo.0 as f32),

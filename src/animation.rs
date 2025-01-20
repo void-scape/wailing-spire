@@ -1,7 +1,6 @@
 use bevy::{prelude::*, utils::HashMap};
+use physics::TimeScale;
 use std::{hash::Hash, marker::PhantomData, time::Duration};
-
-use crate::physics::TimeScale;
 
 pub struct AnimationPlugin<A> {
     _marker: PhantomData<A>,

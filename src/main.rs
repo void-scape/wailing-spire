@@ -9,16 +9,13 @@ use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use map::MapGen;
 use physics::{gravity::Gravity, layers, spatial::SpatialHash};
-use player::{health::Dead, Player};
+use player::{health::Dead, hook::OccludeHookTarget, Player};
 use spire::*;
-
-use self::player::hook::OccludeHookTarget;
 
 mod animation;
 mod enemies;
 mod entities;
 mod map;
-mod physics;
 mod player;
 mod spikes;
 mod spire;
@@ -44,6 +41,7 @@ fn main() {
             spikes::SpikePlugin,
             bevy_framepace::FramepacePlugin,
         ))
+        .register_required_components::<spire::TileSolid, physics::collision::TilesetCollider>()
         .add_systems(Update, tween::despawn_finished_tweens)
         // .insert_resource(AlignCanvasToCamera(false))
         .register_required_components_with::<LevelTileSets, SpatialHash>(|| SpatialHash::new(32.))

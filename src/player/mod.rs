@@ -1,11 +1,8 @@
 use self::movement::Homing;
 use self::params::*;
-use crate::spikes;
+use crate::animation::{AnimationController, AnimationPlugin};
 use crate::TILE_SIZE;
-use crate::{
-    animation::{AnimationController, AnimationPlugin},
-    physics::{prelude::*, trigger::Trigger},
-};
+use ::selector::Selector;
 use bevy::prelude::*;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
 use combo::Combo;
@@ -18,6 +15,7 @@ use leafwing_input_manager::{
     Actionlike,
 };
 use movement::BrushingMove;
+use physics::{prelude::*, trigger::Trigger};
 use std::hash::Hash;
 
 mod camera;
@@ -28,8 +26,6 @@ mod input;
 mod movement;
 mod params;
 mod selector;
-
-pub use selector::Selector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SystemSet)]
 pub enum PlayerSystems {
@@ -44,9 +40,10 @@ impl Plugin for PlayerPlugin {
             .register_required_components::<crate::spire::Knight, Player>()
             .add_event::<hook::HookTargetCollision>()
             .init_resource::<hook::ViableTargets>()
-            .init_resource::<selector::SelectorTick>()
-            .insert_resource(selector::MaxSelectors(4))
+            .init_resource::<::selector::SelectorTick>()
+            .insert_resource(::selector::MaxSelectors(4))
             .insert_resource(hook::ShowHook::default())
+            .insert_resource(input::ActiveInputType::default())
             .add_plugins((
                 InputManagerPlugin::<Action>::default(),
                 AnimationPlugin::<PlayerAnimation>::default(),
@@ -60,6 +57,7 @@ impl Plugin for PlayerPlugin {
                     selector::insert_texture_cache,
                 ),
             )
+            .add_systems(PreUpdate, input::update_active_input_type)
             .add_systems(
                 Update,
                 (
@@ -68,7 +66,7 @@ impl Plugin for PlayerPlugin {
                         hook::move_hook,
                         hook::terminal_velocity,
                         hook::collision_hook,
-                        selector::calculate_selectors,
+                        ::selector::calculate_selectors,
                         selector::trigger_hook,
                         combo::combo,
                     )
@@ -105,6 +103,7 @@ impl Plugin for PlayerPlugin {
 #[require(BrushingMove)]
 #[require(Combo)]
 #[require(Health(|| Health::PLAYER))]
+#[require(::selector::SelectorSource)]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {

@@ -1,13 +1,13 @@
 use crate::{
-    physics::{
-        layers::RegisterPhysicsLayer,
-        prelude::{Collider, Collision},
-        spatial::{SpatialData, SpatialHash},
-    },
     player::health::{Dead, Health},
     spire, TILE_SIZE,
 };
 use bevy::prelude::*;
+use physics::{
+    layers::RegisterPhysicsLayer,
+    prelude::{Collider, Collision},
+    spatial::{SpatialData, SpatialHash},
+};
 
 pub struct SpikePlugin;
 

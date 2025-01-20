@@ -1,0 +1,11 @@
+[package]
+name = "physics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.15"
+bevy_tween = "0.7.0"
+rand = "0.8.5"
+smallvec = "1.13.2"
+bevy_pixel_gfx = { path = "../bevy_pixel_gfx" }

@@ -4,8 +4,6 @@ use super::{
     prelude::Velocity,
     spatial,
 };
-use crate::spire::TileSolid;
-use crate::TILE_SIZE;
 use bevy::{
     ecs::{component::ComponentId, world::DeferredWorld},
     prelude::*,
@@ -691,11 +689,26 @@ pub fn handle_dynamic_body_collsions<T: Component>(
     }
 }
 
-// TODO: collider collapsing vertically
+/// A marker component that indicates a tile should
+/// generate collision when inserted.
+#[derive(Debug, Default, Component)]
+pub struct TilesetCollider;
+
+/// Sets the tile size, used primarily for collider construction.
+#[derive(Debug, Resource)]
+pub struct TilesetSize(pub f32);
+
+impl Default for TilesetSize {
+    fn default() -> Self {
+        Self(16.0)
+    }
+}
+
 pub fn build_tile_set_colliders(
     mut commands: Commands,
-    tiles: Query<(&Transform, &Parent), Added<TileSolid>>,
+    tiles: Query<(&Transform, &Parent), Added<TilesetCollider>>,
     levels: Query<Entity>,
+    size: Res<TilesetSize>,
     // manual_collision: Query<&Transform, Added<annual::Collision>>,
 ) {
     //let mut num_colliders = 0;
@@ -719,7 +732,7 @@ pub fn build_tile_set_colliders(
         parents.insert(parent.get());
     }
 
-    let tile_size = TILE_SIZE;
+    let tile_size = size.0;
     let offset = tile_size / 2.;
 
     for parent in parents.into_iter() {

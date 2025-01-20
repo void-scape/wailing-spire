@@ -81,6 +81,7 @@ impl Plugin for PhysicsPlugin {
             .add_event::<trigger::TriggerEvent>()
             .add_event::<trigger::TriggerEnter>()
             .add_event::<trigger::TriggerExit>()
+            .init_resource::<collision::TilesetSize>()
             .insert_resource(debug::ShowCollision(false))
             .add_systems(Update, collision::build_tile_set_colliders)
             .add_systems(

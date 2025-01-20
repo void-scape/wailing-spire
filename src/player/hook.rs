@@ -1,14 +1,9 @@
 use super::params::*;
-use super::{
-    health::Dead,
-    selector::{MaxSelectors, SelectorInfo},
-    Action, Collider, CollidesWith, Player, Selector, Velocity,
-};
-use crate::{physics::spatial::SpatialHash, TILE_SIZE};
+use super::{health::Dead, Collider, CollidesWith, Player, Velocity};
+use crate::TILE_SIZE;
 use bevy::{prelude::*, sprite::Anchor};
-use itertools::Itertools;
-use leafwing_input_manager::prelude::*;
-use std::cmp::Ordering;
+use physics::spatial::SpatialHash;
+use selector::SelectorTarget;
 
 #[derive(Debug, Resource)]
 pub(super) struct ShowHook(Visibility);
@@ -49,10 +44,6 @@ pub struct Hook {
 #[derive(Component)]
 pub struct Chain;
 
-/// Requires a [`Collider`] to be a viable target.
-#[derive(Component, Default, Debug)]
-pub struct HookTarget;
-
 /// When combined with a [`SpatialHash`], performs ray
 /// casting on collision to occlude viable hook targets.
 #[derive(Default, Component)]
@@ -91,7 +82,7 @@ pub(super) fn spawn_hook(server: Res<AssetServer>, mut commands: Commands) {
 }
 
 pub(super) fn gather_viable_targets(
-    targets: Query<(Entity, &GlobalTransform), With<HookTarget>>,
+    targets: Query<(Entity, &GlobalTransform), With<SelectorTarget>>,
     player: Query<&GlobalTransform, With<super::Player>>,
     mut viable: ResMut<ViableTargets>,
     spatial_hash_query: Query<&SpatialHash, With<OccludeHookTarget>>,
