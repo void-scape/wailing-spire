@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::{
     collision::Collider,
     layers::TriggersWith,
@@ -13,6 +15,26 @@ use bevy::{prelude::*, utils::hashbrown::HashMap};
 /// Will trigger with any [`TriggersWith`] layer present in the entity.
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct Trigger(pub Collider);
+
+/// A list of all entities within a trigger.
+#[derive(Component)]
+pub struct Triggers<T>(smallvec::SmallVec<[Entity; 4]>, PhantomData<T>);
+
+impl<T> Default for Triggers<T> {
+    fn default() -> Self {
+        Self(smallvec::SmallVec::default(), PhantomData)
+    }
+}
+
+impl<T> Triggers<T> {
+    pub fn entities(&self) -> &[Entity] {
+        &self.0
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
+    }
+}
 
 /// In the case of trigger triggers trigger, two triggers will each trigger, both triggering the
 /// other trigger.
@@ -79,10 +101,15 @@ pub fn emit_trigger_states(
 }
 
 pub fn handle_triggers<T: Component>(
-    triggers: Query<(Entity, &GlobalTransform, &Trigger, &TriggersWith<T>)>,
+    triggers: Query<(Entity, &GlobalTransform, &Trigger)>,
     bodies: Query<(Entity, &GlobalTransform, &Collider, &TriggersWith<T>)>,
+    mut body_triggers: Query<&mut Triggers<T>>,
     mut writer: EventWriter<TriggerEvent>,
 ) {
+    for mut trigger in body_triggers.iter_mut() {
+        trigger.clear();
+    }
+
     let dynamic_body_map = SpatialHash::new_with(
         64.,
         bodies
@@ -90,7 +117,7 @@ pub fn handle_triggers<T: Component>(
             .map(|(e, t, c, _)| SpatialData::from_entity(e, t, c, ())),
     );
 
-    for (entity, transform, trigger, _) in triggers.iter() {
+    for (entity, transform, trigger) in triggers.iter() {
         let collider = trigger.0.global_absolute(transform);
 
         for SpatialData {
@@ -104,6 +131,10 @@ pub fn handle_triggers<T: Component>(
                     trigger: entity,
                     target: *e,
                 });
+
+                if let Ok(mut triggers) = body_triggers.get_mut(*e) {
+                    triggers.0.push(entity);
+                }
             }
         }
     }

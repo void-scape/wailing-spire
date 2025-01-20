@@ -6,10 +6,17 @@ use bevy::{
     prelude::*,
 };
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
-use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
+use bevy_pixel_gfx::{camera::MainCamera, pixel_perfect::CanvasDimensions};
 use map::MapGen;
-use physics::{gravity::Gravity, layers, spatial::SpatialHash};
+use physics::{
+    gravity::Gravity,
+    layers::{self, RegisterPhysicsLayer, TriggersWith},
+    prelude::Collider,
+    spatial::SpatialHash,
+    trigger::Trigger,
+};
 use player::{health::Dead, hook::OccludeHookTarget, Player};
+use selector::Selector;
 use spire::*;
 
 mod animation;
@@ -48,7 +55,7 @@ fn main() {
         .register_required_components::<LevelTileSets, layers::Wall>()
         .register_required_components::<LevelTileSets, OccludeHookTarget>()
         .insert_resource(GlobalVolume::new(0.5))
-        .insert_resource(Gravity(Vec2::NEG_Y * 12.))
+        .insert_resource(Gravity(Vec2::NEG_Y * 10.))
         .insert_resource(ClearColor(srgb_from_hex(0x0d001a)))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)

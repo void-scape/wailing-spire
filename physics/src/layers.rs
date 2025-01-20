@@ -1,4 +1,4 @@
-use super::prelude::Collision;
+use super::prelude::{Collision, Triggers};
 use bevy::prelude::*;
 use core::marker::PhantomData;
 
@@ -19,6 +19,7 @@ impl<T: Component> Default for CollidesWith<T> {
 /// to enable triggering between the body and the
 /// target trigger bodies.
 #[derive(Debug, Component)]
+#[require(Triggers<T>)]
 pub struct TriggersWith<T: Component>(PhantomData<T>);
 
 impl<T: Component> Default for TriggersWith<T> {

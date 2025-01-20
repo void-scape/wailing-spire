@@ -141,6 +141,13 @@ impl AbsoluteCollider {
         }
     }
 
+    pub fn get_aabb(&self) -> RectCollider {
+        match self {
+            Self::Rect(rect) => *rect,
+            Self::Circle(_) => todo!("implement aabb for circles"),
+        }
+    }
+
     pub fn position(&self) -> Vec2 {
         match self {
             Self::Rect(rect) => rect.tl,
@@ -241,6 +248,76 @@ impl RectCollider {
 
     pub fn center(&self) -> Vec2 {
         Vec2::new(self.tl.x + self.size.x * 0.5, self.tl.y - self.size.y * 0.5)
+    }
+
+    pub fn line_intersection(&self, p0: Vec2, p1: Vec2) -> Option<Vec2> {
+        // Parametric direction
+        let dir = p1 - p0;
+
+        // Boundaries
+        let left = self.tl.x;
+        let right = self.tl.x + self.size.x;
+        let top = self.tl.y;
+        let bottom = self.tl.y - self.size.y;
+
+        let mut t_candidates = Vec::new();
+
+        // 1) Left boundary (x = left), as long as dir.x != 0
+        if dir.x != 0.0 {
+            let t = (left - p0.x) / dir.x;
+            if t >= 0.0 && t <= 1.0 {
+                let y_at_t = p0.y + t * dir.y;
+                if y_at_t <= top && y_at_t >= bottom {
+                    t_candidates.push(t);
+                }
+            }
+        }
+
+        // 2) Right boundary (x = right)
+        if dir.x != 0.0 {
+            let t = (right - p0.x) / dir.x;
+            if t >= 0.0 && t <= 1.0 {
+                let y_at_t = p0.y + t * dir.y;
+                if y_at_t <= top && y_at_t >= bottom {
+                    t_candidates.push(t);
+                }
+            }
+        }
+
+        // 3) Top boundary (y = top)
+        if dir.y != 0.0 {
+            let t = (top - p0.y) / dir.y;
+            if t >= 0.0 && t <= 1.0 {
+                let x_at_t = p0.x + t * dir.x;
+                if x_at_t >= left && x_at_t <= right {
+                    t_candidates.push(t);
+                }
+            }
+        }
+
+        // 4) Bottom boundary (y = bottom)
+        if dir.y != 0.0 {
+            let t = (bottom - p0.y) / dir.y;
+            if t >= 0.0 && t <= 1.0 {
+                let x_at_t = p0.x + t * dir.x;
+                if x_at_t >= left && x_at_t <= right {
+                    t_candidates.push(t);
+                }
+            }
+        }
+
+        // Pick the smallest positive t (the first time we exit)
+        let min_t = t_candidates
+            .into_iter()
+            .filter(|&t| t >= 0.0)
+            .fold(f32::MAX, |a, b| a.min(b));
+
+        // If we found a valid intersection:
+        if min_t < f32::MAX {
+            Some(p0 + dir * min_t)
+        } else {
+            None
+        }
     }
 }
 
@@ -451,7 +528,7 @@ pub fn handle_collisions<T: Component>(
         let original_collider = &collider;
         let mut global_t = global_transform.compute_transform();
         let mut collider = collider.absolute(&global_t);
-        let mut collision = smallvec::SmallVec::new();
+        entity_collision.clear();
 
         for map in map_query.iter() {
             let mut colliders = map.nearby_objects(&collider.position()).collect::<Vec<_>>();
@@ -470,7 +547,7 @@ pub fn handle_collisions<T: Component>(
             } in colliders.into_iter()
             {
                 if collider.collides_with(&sc) {
-                    collision.push(*entity);
+                    entity_collision.0.push(*entity);
 
                     let res = collider.resolution(&sc);
                     resolution.0 += res;
@@ -486,8 +563,6 @@ pub fn handle_collisions<T: Component>(
                 }
             }
         }
-
-        entity_collision.0 = collision;
 
         // update global transform here so changes are observable in remaining collision systems.
         *global_transform = GlobalTransform::from(global_t);

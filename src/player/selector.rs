@@ -1,9 +1,14 @@
 use super::{
     input::{ActiveInputType, InputType, CONTROLLER_SELECTOR_MAP, KEYBOARD_SELECTOR_MAP},
-    Action, Homing, Player, Velocity,
+    Action, ButtonLayer, Homing, Player, Velocity,
 };
 use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
+use bevy_pixel_gfx::camera::MainCamera;
 use leafwing_input_manager::prelude::ActionState;
+use physics::{
+    prelude::Collider,
+    trigger::{Trigger, Triggers},
+};
 use selector::{MaxSelectors, Selector, SelectorInfo, SelectorTarget};
 
 pub(super) fn trigger_hook(
@@ -71,6 +76,16 @@ pub(super) fn clear_removed_entities(
 #[derive(Resource)]
 pub(super) struct SelectorTextureCache {
     map: HashMap<InputType, SelectorTexture>,
+}
+
+impl SelectorTextureCache {
+    pub fn map(&self) -> &HashMap<InputType, SelectorTexture> {
+        &self.map
+    }
+
+    pub fn sprite(&self, input: &ActiveInputType, selector: &Selector) -> Sprite {
+        self.map.get(&input.ty()).unwrap().sprite(selector)
+    }
 }
 
 #[derive(Clone)]
@@ -175,7 +190,7 @@ pub(super) fn insert_texture_cache(
 ///
 /// Child of a [`SelectorInfo`] `target`.
 #[derive(Component)]
-pub(super) struct SelectorSprite(Selector);
+pub struct SelectorSprite(Selector);
 
 pub(super) fn add_selectors(
     mut commands: Commands,
@@ -206,7 +221,7 @@ pub(super) fn add_selectors(
             .iter()
             .any(|(_, info)| info.target.is_some_and(|t| t == parent.get()))
         {
-            commands.entity(entity).despawn();
+            commands.entity(entity).despawn_recursive();
         }
     }
 
@@ -269,5 +284,73 @@ pub(super) fn add_selectors(
         } else {
             todo!("sprite not loaded fallback");
         }
+    }
+}
+
+#[derive(Component)]
+pub struct OffscreenIndicator(Selector);
+
+pub(super) fn manage_offscreen_selectors(
+    cam: Query<&Triggers<ButtonLayer>, With<MainCamera>>,
+    selector_sprites: Query<(Entity, &SelectorSprite, &GlobalTransform)>,
+    offscreen_indicators: Query<(Entity, &OffscreenIndicator)>,
+    textures: Res<SelectorTextureCache>,
+    input: Res<ActiveInputType>,
+    mut commands: Commands,
+) {
+    let Ok(cam) = cam.get_single() else {
+        return;
+    };
+
+    for (entity, sprite, trans) in selector_sprites.iter() {
+        if cam.entities().contains(&entity) {
+            let offscreen_entity = offscreen_indicators
+                .iter()
+                .find_map(|(e, s)| (s.0 == sprite.0).then_some(e));
+
+            if let Some(os_entity) = offscreen_entity {
+                commands.entity(os_entity).despawn_recursive();
+            }
+        } else {
+            let offscreen_entity = offscreen_indicators.iter().any(|(_, s)| s.0 == sprite.0);
+
+            if !offscreen_entity {
+                let texture = textures.sprite(&input, &sprite.0);
+                commands.spawn((OffscreenIndicator(sprite.0), texture));
+                info!("selector {:?} offscreen!", sprite.0);
+            }
+        }
+    }
+}
+
+pub(super) fn move_offscreen_indicators(
+    cam: Query<(&GlobalTransform, &Collider), With<MainCamera>>,
+    selector_sprites: Query<(&SelectorSprite, &Trigger, &GlobalTransform)>,
+    mut offscreen_indicators: Query<(&OffscreenIndicator, &mut Transform)>,
+) {
+    let Ok((cam_transform, cam_collider)) = cam.get_single() else {
+        return;
+    };
+
+    let cam = cam_collider.global_absolute(cam_transform).get_aabb();
+    let cam_center = cam.center();
+
+    for (offscreen, mut transform) in offscreen_indicators.iter_mut() {
+        let selector = selector_sprites
+            .iter()
+            .find(|(ss, _, _)| ss.0 == offscreen.0);
+
+        let Some((_, target_trigger, target_transform)) = selector else {
+            continue;
+        };
+
+        let center = target_trigger.0.global_absolute(target_transform).center();
+
+        let Some(intersection) = cam.line_intersection(cam_center, center) else {
+            continue;
+        };
+
+        transform.translation.x = intersection.x - 12.0;
+        transform.translation.y = intersection.y + 12.0;
     }
 }

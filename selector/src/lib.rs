@@ -88,11 +88,11 @@ struct TargetScores {
 impl TargetScores {
     /// The sum of all scores.
     pub fn sum(&self) -> f32 {
-        self.distance
+        (1.0 - self.distance) * 1.5
             + self.angle
             + self.selector.familiarity * 2.0
             + self.selector.recency
-            + self.selector.stability * 2.0
+            + self.selector.stability * 1.5
             + self.distance_above_player
     }
 }
@@ -120,6 +120,9 @@ pub fn calculate_selectors(
                 None
             }
         })
+        // take no more than 15 since any more can lead to _extremely_ long
+        // evaluations
+        .take(15)
         .collect();
 
     let mut collected_selectors: Vec<_> = selectors.iter().map(|(s, i)| (*s, i)).collect();

@@ -1,9 +1,10 @@
 use self::movement::Homing;
 use self::params::*;
 use crate::animation::{AnimationController, AnimationPlugin};
-use crate::{spikes, TILE_SIZE};
+use crate::{spikes, HEIGHT, TILE_SIZE, WIDTH};
 use ::selector::Selector;
 use bevy::prelude::*;
+use bevy_pixel_gfx::camera::MainCamera;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset};
 use combo::Combo;
 use health::Health;
@@ -17,6 +18,7 @@ use leafwing_input_manager::{
 use movement::BrushingMove;
 use physics::{prelude::*, trigger::Trigger};
 use physics::{Physics, PhysicsSystems};
+use selector::SelectorSprite;
 use std::hash::Hash;
 
 mod camera;
@@ -35,8 +37,28 @@ pub enum PlayerSystems {
 
 pub struct PlayerPlugin;
 
+#[derive(Component, Default)]
+struct ButtonLayer;
+
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
+        // set up selector sprite triggering
+        app.register_trigger_layer::<ButtonLayer>()
+            .register_required_components::<MainCamera, TriggersWith<ButtonLayer>>()
+            .register_required_components_with::<MainCamera, _>(|| {
+                Collider::from_rect(
+                    Vec2::new(-WIDTH / 2.0, HEIGHT / 2.0),
+                    Vec2::new(WIDTH, HEIGHT),
+                )
+            })
+            .register_required_components::<SelectorSprite, ButtonLayer>()
+            .register_required_components_with::<SelectorSprite, _>(|| {
+                Trigger(Collider::from_rect(
+                    Vec2::new(12.0, -12.0),
+                    Vec2::new(8.0, 8.0),
+                ))
+            });
+
         app.register_trigger_layer::<layers::Player>()
             .register_required_components::<crate::spire::Knight, Player>()
             .add_event::<hook::HookTargetCollision>()
@@ -82,12 +104,18 @@ impl Plugin for PlayerPlugin {
                 )
                     .chain(),
             )
+            .add_systems(PostUpdate, selector::add_selectors)
             .add_systems(
                 Physics,
                 (
-                    selector::add_selectors,
-                    camera::move_camera.after(PhysicsSystems::Collision),
-                ),
+                    camera::move_camera,
+                    (
+                        selector::manage_offscreen_selectors,
+                        selector::move_offscreen_indicators,
+                    )
+                        .chain(),
+                )
+                    .after(PhysicsSystems::Collision),
             );
     }
 }
