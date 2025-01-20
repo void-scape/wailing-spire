@@ -4,14 +4,22 @@ use bevy::prelude::*;
 use bevy_pixel_gfx::screen_shake;
 
 pub mod dino;
+pub mod spiker;
 
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(AnimationPlugin::<dino::DinoAnimation>::default())
-            .register_required_components::<spire::Dino, dino::Dino>()
-            .add_systems(PostUpdate, (dino::flip_dino, hook_collisions));
+        app.add_plugins((
+            AnimationPlugin::<dino::DinoAnimation>::default(),
+            AnimationPlugin::<spiker::SpikerAnimation>::default(),
+        ))
+        .register_required_components::<spire::Dino, dino::Dino>()
+        .register_required_components::<spire::Spiker, spiker::Spiker>()
+        .add_systems(
+            PostUpdate,
+            (dino::flip_dino, hook_collisions, spiker::update),
+        );
     }
 }
 

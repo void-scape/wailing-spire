@@ -225,7 +225,7 @@ pub(super) fn add_selectors(
         let target = info.target.unwrap();
         let Ok((entity, sprite)) = sprite_query.get(target) else {
             // todo!("non sprite fallback");
-            warn!("selector on entity with no sprite??");
+            warn_once!("selector on entity with no sprite?? This warns once");
             continue;
         };
 

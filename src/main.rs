@@ -81,7 +81,10 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
         World(server.load("ldtk/spire.ron")),
         // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
         // LevelLoader::levels_with_offset(map, Vec2::ZERO),
-        LevelLoader::levels(Stack((StartLevel, UpLevel, TunnelLevel, TunnelLevel))),
+        LevelLoader::levels(Stack((
+            StartLevel, UpLevel,
+            // TunnelLevel, TunnelLevel
+        ))),
     ));
 
     commands.spawn((
@@ -104,7 +107,10 @@ fn reset(
             World(server.load("ldtk/spire.ron")),
             // LevelLoader::levels_with_offset((StartLevel, RightLevel, UpLevel), Vec2::ZERO),
             // LevelLoader::levels_with_offset(map, Vec2::ZERO),
-            LevelLoader::levels(Stack((StartLevel, UpLevel, TunnelLevel, TunnelLevel))),
+            LevelLoader::levels(Stack((
+                StartLevel, UpLevel,
+                // TunnelLevel, TunnelLevel
+            ))),
         ));
     }
 }
