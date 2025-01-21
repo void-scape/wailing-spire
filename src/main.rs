@@ -6,23 +6,26 @@ use bevy::{
     prelude::*,
 };
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
-use bevy_pixel_gfx::pixel_perfect::{self, CanvasDimensions};
+use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
+use health::Dead;
 use map::MapGen;
 use physics::{
     gravity::Gravity,
     layers::{self},
     spatial::SpatialHash,
 };
-use player::{health::Dead, hook::OccludeHookTarget, Player};
+use player::{hook::OccludeHookTarget, PlayerHurtBox};
 use spire::*;
 
 mod animation;
 mod enemies;
 mod entities;
+mod health;
 mod lifetime;
 mod map;
 mod player;
 mod spikes;
+#[allow(unused)]
 mod spire;
 mod tween;
 
@@ -47,6 +50,7 @@ fn main() {
             bevy_framepace::FramepacePlugin,
             bevy_enoki::EnokiPlugin,
             lifetime::LifeTimePlugin,
+            health::HealthPlugin,
         ))
         .register_required_components::<spire::TileSolid, physics::collision::TilesetCollider>()
         .add_systems(Update, tween::despawn_finished_tweens)
@@ -107,7 +111,7 @@ fn reset(
     mut commands: Commands,
     server: Res<AssetServer>,
     world: Query<Entity, With<bevy_ldtk_scene::World>>,
-    player: Query<&Dead, With<Player>>,
+    player: Query<&Dead, With<PlayerHurtBox>>,
 ) {
     if !player.is_empty() {
         let entity = world.single();

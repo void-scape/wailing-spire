@@ -1,12 +1,10 @@
-use crate::{
-    player::health::{Dead, Health},
-    spire, TILE_SIZE,
-};
+use crate::{health::HitBox, spire, TILE_SIZE};
 use bevy::prelude::*;
 use physics::{
     layers::RegisterPhysicsLayer,
-    prelude::{Collider, Collision},
+    prelude::Collider,
     spatial::{SpatialData, SpatialHash},
+    trigger::Trigger,
 };
 
 pub struct SpikePlugin;
@@ -14,7 +12,6 @@ pub struct SpikePlugin;
 impl Plugin for SpikePlugin {
     fn build(&self, app: &mut App) {
         app.register_collision_layer::<Spike>()
-            .add_systems(Update, kill_player)
             .add_systems(Last, build_spikes);
     }
 }
@@ -36,7 +33,13 @@ fn build_spikes(
         );
 
         let entity = commands
-            .spawn((transform.compute_transform(), collider, Spike))
+            .spawn((
+                transform.compute_transform(),
+                collider,
+                Spike,
+                Trigger(collider),
+                HitBox::new(100),
+            ))
             .id();
         map.insert(SpatialData {
             collider: collider.global_absolute(transform),
@@ -51,20 +54,5 @@ fn build_spikes(
         commands
             .entity(spike_query.iter().next().map(|(entity, _)| entity).unwrap())
             .with_child((map, Spike));
-    }
-}
-
-fn kill_player(
-    mut player: Query<
-        (&mut Health, &Collision<Spike>),
-        (With<crate::player::Player>, Without<Dead>),
-    >,
-) {
-    let Ok((mut health, collision)) = player.get_single_mut() else {
-        return;
-    };
-
-    if !collision.entities().is_empty() {
-        health.damage_all();
     }
 }

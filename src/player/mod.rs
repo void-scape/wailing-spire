@@ -1,13 +1,12 @@
-use self::movement::Homing;
 use crate::animation::{AnimationController, AnimationPlugin};
+use crate::health::{Health, HitBox, HurtBox};
 use crate::{spikes, HEIGHT, TILE_SIZE, WIDTH};
-use ::selector::Selector;
+use ::selector::{Selector, SelectorTarget};
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pixel_gfx::{anchor::AnchorTarget, camera::CameraOffset, camera::MainCamera};
 use combo::Combo;
-use health::Health;
 use layers::RegisterPhysicsLayer;
 use layers::TriggersWith;
 use leafwing_input_manager::{
@@ -28,6 +27,8 @@ pub mod hook;
 mod input;
 mod movement;
 mod selector;
+
+pub use movement::Homing;
 
 pub const MAX_VEL: f32 = 750.;
 
@@ -58,7 +59,9 @@ pub struct PlayerSettings {
 
     /// Maximum distance for a hook target
     pub target_threshold: f32,
-    pub terminal_velocity2_threshold: f32,
+
+    pub knockback_duration: f32,
+    pub knockback_damping: f32,
 }
 
 impl Default for PlayerSettings {
@@ -78,7 +81,8 @@ impl Default for PlayerSettings {
             dash_speed: 1000.,
             dash_decay: 2.,
             target_threshold: 256.0,
-            terminal_velocity2_threshold: 60_000.,
+            knockback_duration: 0.5,
+            knockback_damping: 0.04,
         }
     }
 }
@@ -112,8 +116,9 @@ impl Plugin for PlayerPlugin {
                 ))
             });
 
-        app.register_trigger_layer::<layers::Player>()
-            .register_required_components::<crate::spire::Knight, Player>()
+        app.register_required_components::<crate::spire::Knight, Player>()
+            .register_required_components::<SelectorTarget, TriggersWith<Homing>>()
+            .register_trigger_layer::<Homing>()
             .add_event::<hook::HookTargetCollision>()
             .init_resource::<hook::ViableTargets>()
             .init_resource::<::selector::SelectorTick>()
@@ -136,12 +141,16 @@ impl Plugin for PlayerPlugin {
                     selector::insert_texture_cache,
                 ),
             )
-            .add_systems(PreUpdate, input::update_active_input_type)
+            .add_systems(
+                PreUpdate,
+                (input::update_active_input_type, insert_player_hurtbox),
+            )
             .add_systems(
                 Physics,
                 (
                     (direction, hook::collision_hook).before(PlayerSystems::Movement),
                     flip_sprite.after(PlayerSystems::Movement),
+                    health::insert_knockback.after(crate::health::update_health),
                 ),
             )
             .configure_sets(
@@ -151,7 +160,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
-                    health::no_shield_collision,
+                    health::update_knockback,
                     (
                         hook::gather_viable_targets,
                         hook::move_hook,
@@ -185,13 +194,7 @@ impl Plugin for PlayerPlugin {
 #[derive(Default, Component)]
 #[require(AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input::input_map))]
-#[require(
-    Velocity,
-    Gravitational,
-    DynamicBody,
-    Collider(collider),
-    Trigger(trigger)
-)]
+#[require(Velocity, Gravitational, DynamicBody, Collider(collider))]
 #[require(MaxVelocity(|| MaxVelocity(Vec2::splat(MAX_VEL))))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE / 2.0, TILE_SIZE * 2.))))]
 #[require(AnchorTarget)]
@@ -199,8 +202,8 @@ impl Plugin for PlayerPlugin {
 #[require(layers::Player)]
 #[require(BrushingMove)]
 #[require(Combo)]
-#[require(Health(|| Health::PLAYER))]
 #[require(::selector::SelectorSource)]
+#[require(Trigger(trigger))]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -224,9 +227,21 @@ fn collider() -> Collider {
 
 fn trigger() -> Trigger {
     Trigger(Collider::from_rect(
-        Vec2::new(TILE_SIZE / 2., -TILE_SIZE / 1.5),
+        Vec2::new(TILE_SIZE / 2., -TILE_SIZE / 1.75),
         Vec2::splat(TILE_SIZE),
     ))
+}
+
+#[derive(Debug, Default, Component)]
+#[require(Transform, Visibility)]
+#[require(Collider(collider))]
+#[require(Health(|| Health::PLAYER), HurtBox, TriggersWith<HitBox>)]
+pub struct PlayerHurtBox;
+
+fn insert_player_hurtbox(mut commands: Commands, player: Option<Single<Entity, Added<Player>>>) {
+    if let Some(entity) = player {
+        commands.entity(*entity).with_child(PlayerHurtBox);
+    }
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

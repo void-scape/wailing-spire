@@ -1,14 +1,14 @@
-use core::f32;
-
+use super::health::Knockback;
 use super::hook::HookTargetCollision;
 use super::Action;
 use super::Direction;
 use super::Player;
 use super::PlayerAnimation;
+use super::PlayerHurtBox;
 use super::PlayerSettings;
 use super::PlayerSystems;
 use crate::animation::AnimationController;
-use crate::lifetime::LifeTime;
+use crate::health::Health;
 use crate::TILE_SIZE;
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
@@ -17,6 +17,7 @@ use bevy_enoki::ParticleEffectHandle;
 use bevy_enoki::ParticleSpawner;
 use bevy_tween::combinator::tween;
 use bevy_tween::prelude::*;
+use core::f32;
 use interpolate::sprite_color_to;
 use leafwing_input_manager::prelude::ActionState;
 use physics::Physics;
@@ -39,7 +40,9 @@ impl Plugin for MovementPlugin {
                     jumping,
                     wall_jump_impulse,
                     ground_strafe,
+                    knockback,
                     air_damping,
+                    homing_hitbox,
                     // debug,
                 )
                     .chain(),
@@ -129,7 +132,7 @@ fn homing(
             (vector, target_vel)
         }
         Err(_) => {
-            // warn!("A homing target is missing one or more components or doesn't exist");
+            error_once!("a homing target is missing one or more components or doesn't exist");
             (homing.average_direction.normalize_or_zero(), None)
         }
     };
@@ -242,6 +245,33 @@ fn homing_effects(
     }
 }
 
+fn homing_hitbox(
+    mut commands: Commands,
+    mut removed_homing: RemovedComponents<Homing>,
+    player: Option<Single<Entity, With<Player>>>,
+    added_homing: Option<Single<&Player, Added<Homing>>>,
+    hurtbox: Option<Single<(Entity, &Health), With<PlayerHurtBox>>>,
+    mut prev_health: Local<Option<Health>>,
+) {
+    if added_homing.is_some() {
+        if let Some((entity, health)) = hurtbox.map(|h| h.into_inner()) {
+            *prev_health = Some(*health);
+            commands.entity(entity).despawn_recursive();
+        }
+    } else if let Some(player) = player {
+        for entity in removed_homing.read() {
+            if *player == entity && hurtbox.is_none() {
+                let mut entity = commands.entity(entity);
+                if let Some(health) = *prev_health {
+                    entity.with_child((PlayerHurtBox, health));
+                } else {
+                    entity.with_child(PlayerHurtBox);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Component)]
 pub struct BrushingMove(Stopwatch);
 
@@ -258,6 +288,7 @@ fn brushing(
             (
                 With<Player>,
                 Without<Grounded>,
+                Without<Knockback>,
                 Or<(With<BrushingLeft>, With<BrushingRight>)>,
             ),
         >,
@@ -298,7 +329,10 @@ fn start_jump(
     player: Option<
         Single<
             (Entity, &ActionState<Action>, &GlobalTransform),
-            Or<(With<Grounded>, With<BrushingLeft>, With<BrushingRight>)>,
+            (
+                Or<(With<Grounded>, With<BrushingLeft>, With<BrushingRight>)>,
+                Without<Knockback>,
+            ),
         >,
     >,
     server: Res<AssetServer>,
@@ -333,6 +367,7 @@ fn jumping(
                 With<Jumping>,
                 Without<Dashing>,
                 Without<Homing>,
+                Without<Knockback>,
             ),
         >,
     >,
@@ -374,6 +409,7 @@ fn wall_jump_impulse(
                 Added<Jumping>,
                 Or<(With<BrushingLeft>, With<BrushingRight>)>,
                 Without<Grounded>,
+                Without<Knockback>,
             ),
         >,
     >,
@@ -399,7 +435,10 @@ impl Dashing {
     }
 }
 
-fn start_dash(mut commands: Commands, player: Option<Single<(Entity, &ActionState<Action>)>>) {
+fn start_dash(
+    mut commands: Commands,
+    player: Option<Single<(Entity, &ActionState<Action>), Without<Knockback>>>,
+) {
     let Some((entity, action_state)) = player.map(|p| p.into_inner()) else {
         return;
     };
@@ -428,7 +467,7 @@ fn dashing(
                 Option<&Dashing>,
                 Option<&Grounded>,
             ),
-            With<Player>,
+            (With<Player>, Without<Knockback>),
         >,
     >,
     mut reader: EventReader<HookTargetCollision>,
@@ -524,6 +563,7 @@ fn air_strafe(
                 Without<Grounded>,
                 Without<Dashing>,
                 Without<Homing>,
+                Without<Knockback>,
             ),
         >,
     >,
@@ -568,6 +608,7 @@ fn ground_strafe(
                 With<Grounded>,
                 Without<Dashing>,
                 Without<Homing>,
+                Without<Knockback>,
             ),
         >,
     >,
@@ -586,7 +627,14 @@ fn ground_strafe(
 
 fn wall_slide(
     player: Option<
-        Single<&mut Velocity, (With<Player>, Or<(With<BrushingLeft>, With<BrushingRight>)>)>,
+        Single<
+            &mut Velocity,
+            (
+                With<Player>,
+                Or<(With<BrushingLeft>, With<BrushingRight>)>,
+                Without<Knockback>,
+            ),
+        >,
     >,
     settings: Res<PlayerSettings>,
 ) {
@@ -606,6 +654,7 @@ fn air_damping(
                 Without<Grounded>,
                 Without<BrushingLeft>,
                 Without<BrushingRight>,
+                Without<Knockback>,
             ),
         >,
     >,
@@ -618,6 +667,24 @@ fn air_damping(
     velocity.0.x *= 1.0 - settings.air_damping;
 }
 
+fn knockback(
+    player: Option<Single<(&mut Velocity, &Knockback), With<Player>>>,
+    settings: Res<PlayerSettings>,
+    mut set: Local<bool>,
+) {
+    let Some((mut velocity, knockback)) = player.map(|p| p.into_inner()) else {
+        *set = true;
+        return;
+    };
+
+    if *set {
+        *set = false;
+        velocity.0.x = knockback.normalized().x * 100.;
+    }
+
+    velocity.0.x *= 1.0 - settings.knockback_damping;
+}
+
 fn debug(
     player: Option<
         Single<
@@ -628,6 +695,7 @@ fn debug(
                 Option<&Homing>,
                 Option<&Jumping>,
                 Option<&Dashing>,
+                Option<&Knockback>,
             ),
             With<Player>,
         >,

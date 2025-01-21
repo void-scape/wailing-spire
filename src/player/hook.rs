@@ -1,8 +1,10 @@
 use super::movement::Homing;
 use super::PlayerSettings;
-use super::{health::Dead, Collider, CollidesWith, Player, Velocity};
+use super::{Collider, Player, Velocity};
+use crate::health::Dead;
 use crate::TILE_SIZE;
 use bevy::prelude::*;
+use physics::layers::TriggersWith;
 use physics::spatial::SpatialHash;
 use physics::trigger::TriggerEnter;
 use selector::SelectorTarget;
@@ -59,10 +61,6 @@ pub(super) struct ViableTarget {
     pub(super) entity: Entity,
     pub(super) translation: Vec2,
 }
-
-/// Player is moving fast enough to _kill_ enemies.
-// #[derive(Component)]
-// pub struct TerminalVelocity;
 
 pub(super) fn spawn_hook(server: Res<AssetServer>, mut commands: Commands) {
     let mut chains = Vec::new();
@@ -281,22 +279,18 @@ pub struct HookTargetCollision {
 }
 
 pub(super) fn collision_hook(
-    mut commands: Commands,
-    player: Query<(Entity, &Homing), (With<Player>, Without<Dead>)>,
+    player: Query<Entity, (With<Player>, With<Homing>)>,
+    entity_query: Query<&TriggersWith<Homing>>,
     mut reader: EventReader<TriggerEnter>,
     mut writer: EventWriter<HookTargetCollision>,
 ) {
-    let Ok((entity, homing)) = player.get_single() else {
+    let Ok(entity) = player.get_single() else {
         reader.clear();
         return;
     };
 
     for event in reader.read() {
-        if event.trigger == entity {
-            // if homing.target() == event.target {
-            //     commands.entity(entity).remove::<super::Homing>();
-            // }
-
+        if event.trigger == entity && entity_query.get(event.target).is_ok() {
             writer.send(HookTargetCollision {
                 target: event.target,
                 kill_target: true,

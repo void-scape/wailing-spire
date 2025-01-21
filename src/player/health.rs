@@ -1,5 +1,12 @@
-use super::{movement::Homing, Acceleration, Action, Player, PlayerAnimation, TriggerEnter};
-use crate::{animation::AnimationController, tween::DespawnFinished};
+use super::{
+    movement::Homing, Acceleration, Action, Player, PlayerAnimation, PlayerHurtBox, PlayerSettings,
+    TriggerEnter,
+};
+use crate::{
+    animation::AnimationController,
+    health::{Dead, Health, TriggeredHitBoxes},
+    tween::DespawnFinished,
+};
 use bevy::{
     input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
     prelude::*,
@@ -14,186 +21,168 @@ use bevy_tween::{
     tween::IntoTarget,
 };
 use leafwing_input_manager::prelude::ActionState;
-use physics::TimeScale;
+use physics::{prelude::Collider, time_scale, TimeScale};
 use std::time::Duration;
-
-/// Deal damage to player if hooked and collided with.
-#[derive(Default, Component)]
-pub struct HookedDamage;
-
-#[derive(Component)]
-pub struct Health {
-    current: usize,
-    max: usize,
-    dead: bool,
-}
-
-impl Health {
-    pub const PLAYER: Self = Health::full(3);
-
-    pub const fn full(max: usize) -> Self {
-        Self {
-            current: max,
-            dead: false,
-            max,
-        }
-    }
-
-    pub fn heal(&mut self, heal: usize) {
-        self.current = (self.current + heal).max(self.max);
-    }
-
-    pub fn damage(&mut self, damage: usize) {
-        self.current = self.current.saturating_sub(damage);
-        self.dead = self.current == 0;
-    }
-
-    pub fn damage_all(&mut self) {
-        self.current = 0;
-        self.dead = true;
-    }
-
-    pub fn current(&self) -> usize {
-        self.current
-    }
-
-    pub fn max(&self) -> usize {
-        self.max
-    }
-
-    pub fn dead(&mut self) -> bool {
-        if self.current == 0 {
-            self.dead = true;
-        }
-
-        self.dead
-    }
-}
-
-#[derive(Component)]
-pub struct Dead;
 
 pub(super) fn death(
     mut commands: Commands,
     server: Res<AssetServer>,
-    mut player: Query<
-        (
-            Entity,
-            &mut Health,
-            &mut ActionState<Action>,
-            &mut AnimationController<PlayerAnimation>,
-        ),
-        (With<Player>, Without<Dead>),
+    player: Option<
+        Single<
+            (
+                &mut ActionState<Action>,
+                &mut AnimationController<PlayerAnimation>,
+            ),
+            With<Player>,
+        >,
     >,
+    player_hurtbox: Option<Single<Entity, (With<PlayerHurtBox>, With<Dead>)>>,
 ) {
-    let Ok((entity, mut health, mut action_state, mut animations)) = player.get_single_mut() else {
+    if player_hurtbox.is_none() {
         return;
-    };
+    }
 
-    if health.dead() {
-        error!("You Died!");
-
-        commands.spawn((
-            AudioPlayer::new(server.load("audio/sfx/death.wav")),
-            PlaybackSettings::DESPAWN,
-        ));
-
+    if let Some((mut action_state, mut animations)) = player.map(|p| p.into_inner()) {
         animations.set_animation_one_shot(PlayerAnimation::Death);
-
         action_state.disable_all_actions();
-        commands.entity(entity).insert(Dead);
+    }
+
+    error!("You Died!");
+    commands.spawn((
+        AudioPlayer::new(server.load("audio/sfx/death.wav")),
+        PlaybackSettings::DESPAWN,
+    ));
+}
+
+#[derive(Debug, Component)]
+pub struct Knockback(Vec2);
+
+impl Knockback {
+    pub fn normalized(&self) -> Vec2 {
+        self.0
     }
 }
 
-pub(super) fn no_shield_collision(
+pub(super) fn insert_knockback(
     mut commands: Commands,
-    mut player: Query<
-        (
-            Entity,
-            &GlobalTransform,
-            &mut Health,
-            &mut AnimationController<PlayerAnimation>,
-            &mut Acceleration,
-        ),
-        (With<Player>, Without<Homing>),
+    player: Option<Single<Entity, With<Player>>>,
+    player_hurtbox: Option<
+        Single<
+            (&TriggeredHitBoxes, &GlobalTransform, &Collider),
+            (With<PlayerHurtBox>, Without<Dead>),
+        >,
     >,
-    glitch_intensity: Single<Entity, With<GlitchIntensity>>,
-    transform_query: Query<&GlobalTransform>,
-    mut enter: EventReader<TriggerEnter>,
-    time_scale: Single<Entity, With<TimeScale>>,
-    mut screen_shake: ResMut<screen_shake::ScreenShake>,
-    gamepads: Query<Entity, With<Gamepad>>,
-    mut rumble_requests: EventWriter<GamepadRumbleRequest>,
+    transform_query: Query<(&GlobalTransform, &Collider)>,
 ) {
-    let Ok((entity, transform, mut health, mut animations, mut acceleration)) =
-        player.get_single_mut()
-    else {
-        enter.clear();
+    let Some(entity) = player else {
         return;
     };
 
-    for event in enter.read() {
-        if event.trigger == entity {
-            health.damage(1);
-            animations.set_animation_one_shot(PlayerAnimation::Hit);
-            error!("Ouch! [{}/{}]", health.current(), health.max());
+    let Some((triggered_hitboxes, transform, collider)) = player_hurtbox.map(|p| p.into_inner())
+    else {
+        return;
+    };
 
-            let scale = time_scale.into_target();
-            commands
-                .animation()
-                .insert(sequence((
-                    tween(
-                        Duration::from_secs_f32(0.1),
-                        EaseKind::Linear,
-                        scale.with(physics::time_scale(1., 0.2)),
-                    ),
-                    tween(
-                        Duration::from_secs_f32(0.3),
-                        EaseKind::Linear,
-                        scale.with(physics::time_scale(0.2, 1.)),
-                    ),
-                )))
-                .insert(DespawnFinished);
+    let mut diff = Vec2::ZERO;
+    for hitbox_entity in triggered_hitboxes.entities() {
+        let Ok((target_t, target_c)) = transform_query.get(*hitbox_entity) else {
+            continue;
+        };
 
-            screen_shake
-                .max_offset(125.)
-                .camera_decay(0.9)
-                .trauma_decay(1.2)
-                .shake();
+        diff += (collider.global_absolute(transform).center()
+            - target_c.global_absolute(target_t).center())
+        .normalize_or_zero();
+    }
 
-            for entity in &gamepads {
-                rumble_requests.send(GamepadRumbleRequest::Add {
-                    duration: Duration::from_secs_f32(0.3),
-                    intensity: GamepadRumbleIntensity::weak_motor(0.5),
-                    gamepad: entity,
-                });
-            }
+    if diff != Vec2::ZERO {
+        commands.entity(*entity).insert(Knockback(diff));
+    }
+}
 
-            let glitch = glitch_intensity.into_target();
-            commands
-                .animation()
-                .insert(sequence((
-                    tween(
-                        Duration::from_secs_f32(0.05),
-                        EaseKind::Linear,
-                        glitch.with(glitch::glitch_intensity(0., 0.5)),
-                    ),
-                    tween(
-                        Duration::from_secs_f32(0.2),
-                        EaseKind::Linear,
-                        glitch.with(glitch::glitch_intensity(0.5, 0.)),
-                    ),
-                )))
-                .insert(DespawnFinished);
+pub(super) fn update_knockback(
+    mut commands: Commands,
+    player: Option<
+        Single<
+            (Entity, &mut AnimationController<PlayerAnimation>),
+            (With<Player>, With<Knockback>),
+        >,
+    >,
+    glitch_intensity: Single<Entity, With<GlitchIntensity>>,
+    mut screen_shake: ResMut<screen_shake::ScreenShake>,
+    gamepads: Query<Entity, With<Gamepad>>,
+    mut rumble_requests: EventWriter<GamepadRumbleRequest>,
+    settings: Res<PlayerSettings>,
+    time: Res<Time>,
+    time_scale_entity: Single<Entity, With<TimeScale>>,
+    time_scale: Single<&TimeScale>,
+    mut timer: Local<Timer>,
+    mut new_hit: Local<bool>,
+) {
+    let Some((entity, mut animations)) = player.map(|p| p.into_inner()) else {
+        *new_hit = true;
+        return;
+    };
 
-            let Ok(target_t) = transform_query.get(event.target) else {
-                continue;
-            };
+    if *new_hit {
+        *new_hit = false;
+        *timer = Timer::new(
+            Duration::from_secs_f32(settings.knockback_duration),
+            TimerMode::Once,
+        );
 
-            let diff = (transform.translation() - target_t.translation())
-                .xy()
-                .normalize_or_zero();
-            // acceleration.apply_force(diff * 500.);
+        animations.set_animation_one_shot(PlayerAnimation::Hit);
+
+        let scale = time_scale_entity.into_target();
+        commands
+            .animation()
+            .insert(sequence((
+                tween(
+                    Duration::from_secs_f32(0.1),
+                    EaseKind::Linear,
+                    scale.with(physics::time_scale(1., 0.2)),
+                ),
+                tween(
+                    Duration::from_secs_f32(0.3),
+                    EaseKind::Linear,
+                    scale.with(physics::time_scale(0.2, 1.)),
+                ),
+            )))
+            .insert(DespawnFinished);
+
+        screen_shake
+            .max_offset(125.)
+            .camera_decay(0.9)
+            .trauma_decay(1.2)
+            .shake();
+
+        for entity in &gamepads {
+            rumble_requests.send(GamepadRumbleRequest::Add {
+                duration: Duration::from_secs_f32(0.3),
+                intensity: GamepadRumbleIntensity::weak_motor(0.5),
+                gamepad: entity,
+            });
         }
+
+        let glitch = glitch_intensity.into_target();
+        commands
+            .animation()
+            .insert(sequence((
+                tween(
+                    Duration::from_secs_f32(0.05),
+                    EaseKind::Linear,
+                    glitch.with(glitch::glitch_intensity(0., 0.5)),
+                ),
+                tween(
+                    Duration::from_secs_f32(0.2),
+                    EaseKind::Linear,
+                    glitch.with(glitch::glitch_intensity(0.5, 0.)),
+                ),
+            )))
+            .insert(DespawnFinished);
+    }
+
+    timer.tick(Duration::from_secs_f32(time.delta_secs() * time_scale.0));
+    if timer.finished() {
+        commands.entity(entity).remove::<Knockback>();
     }
 }

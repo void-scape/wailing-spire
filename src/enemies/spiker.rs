@@ -1,18 +1,19 @@
+use crate::health::HitBox;
 use crate::player::combo::ComboCollision;
-use crate::player::health::HookedDamage;
 use crate::spire;
 use crate::{animation::AnimationController, TILE_SIZE};
 use bevy::prelude::*;
-use physics::{layers, prelude::*};
+use physics::{layers, prelude::*, trigger::Trigger};
 use selector::SelectorTarget;
 
 const SPEED: f32 = 25.;
 
 #[derive(Default, Component)]
 #[require(AnimationController<SpikerAnimation>(animation_controller))]
-#[require(Velocity, DynamicBody, Collider(collider), layers::TriggersWith<layers::Player>)]
+#[require(Velocity, DynamicBody, Collider(collider))]
 #[require(layers::CollidesWith<layers::Wall>)]
-#[require(SelectorTarget, ComboCollision, HookedDamage)]
+#[require(Trigger(|| Trigger(collider())), HitBox(|| HitBox::ONE))]
+#[require(SelectorTarget, ComboCollision)]
 #[require(super::DespawnHooked)]
 #[require(PatrolTarget)]
 pub struct Spiker;
