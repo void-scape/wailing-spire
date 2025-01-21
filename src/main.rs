@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
-use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
+use bevy_pixel_gfx::pixel_perfect::{self, CanvasDimensions};
 use map::MapGen;
 use physics::{
     gravity::Gravity,
@@ -19,6 +19,7 @@ use spire::*;
 mod animation;
 mod enemies;
 mod entities;
+mod lifetime;
 mod map;
 mod player;
 mod spikes;
@@ -44,6 +45,8 @@ fn main() {
             entities::EntityPlugin,
             spikes::SpikePlugin,
             bevy_framepace::FramepacePlugin,
+            bevy_enoki::EnokiPlugin,
+            lifetime::LifeTimePlugin,
         ))
         .register_required_components::<spire::TileSolid, physics::collision::TilesetCollider>()
         .add_systems(Update, tween::despawn_finished_tweens)

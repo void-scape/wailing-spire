@@ -4,7 +4,10 @@ use bevy::{
     input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
     prelude::*,
 };
-use bevy_pixel_gfx::screen_shake;
+use bevy_pixel_gfx::{
+    glitch::{self, GlitchIntensity},
+    screen_shake,
+};
 use bevy_tween::{
     combinator::{sequence, tween},
     prelude::{AnimationBuilderExt, EaseKind},
@@ -114,6 +117,7 @@ pub(super) fn no_shield_collision(
         ),
         (With<Player>, Without<Homing>),
     >,
+    glitch_intensity: Single<Entity, With<GlitchIntensity>>,
     transform_query: Query<&GlobalTransform>,
     mut enter: EventReader<TriggerEnter>,
     time_scale: Single<Entity, With<TimeScale>>,
@@ -164,6 +168,23 @@ pub(super) fn no_shield_collision(
                     gamepad: entity,
                 });
             }
+
+            let glitch = glitch_intensity.into_target();
+            commands
+                .animation()
+                .insert(sequence((
+                    tween(
+                        Duration::from_secs_f32(0.05),
+                        EaseKind::Linear,
+                        glitch.with(glitch::glitch_intensity(0., 0.5)),
+                    ),
+                    tween(
+                        Duration::from_secs_f32(0.2),
+                        EaseKind::Linear,
+                        glitch.with(glitch::glitch_intensity(0.5, 0.)),
+                    ),
+                )))
+                .insert(DespawnFinished);
 
             let Ok(target_t) = transform_query.get(event.target) else {
                 continue;

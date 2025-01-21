@@ -1,3 +1,5 @@
+use core::f32;
+
 use super::hook::HookTargetCollision;
 use super::Action;
 use super::Direction;
@@ -6,14 +8,18 @@ use super::PlayerAnimation;
 use super::PlayerSettings;
 use super::PlayerSystems;
 use crate::animation::AnimationController;
+use crate::lifetime::LifeTime;
+use crate::TILE_SIZE;
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
+use bevy_enoki::prelude::OneShot;
+use bevy_enoki::ParticleEffectHandle;
+use bevy_enoki::ParticleSpawner;
 use bevy_tween::combinator::tween;
 use bevy_tween::prelude::*;
 use interpolate::sprite_color_to;
 use leafwing_input_manager::prelude::ActionState;
 use physics::Physics;
-use physics::PhysicsSystems;
 use physics::{prelude::*, TimeScale};
 
 pub struct MovementPlugin;
@@ -27,6 +33,7 @@ impl Plugin for MovementPlugin {
                 brushing,
                 (
                     homing,
+                    homing_effects,
                     dashing,
                     wall_slide,
                     jumping,
@@ -38,12 +45,12 @@ impl Plugin for MovementPlugin {
                     .chain(),
             )
                 .chain()
-                .before(PhysicsSystems::Velocity),
+                .in_set(PlayerSystems::Movement),
         );
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HomingState {
     Hooking,
     Moving,
@@ -170,6 +177,71 @@ fn homing(
     }
 }
 
+fn homing_effects(
+    mut commands: Commands,
+    player: Option<Single<(Entity, &Homing, &GlobalTransform, &Collider), With<Player>>>,
+    target: Query<&GlobalTransform, Without<Player>>,
+    server: Res<AssetServer>,
+    mut prev_state: Local<Option<HomingState>>,
+) {
+    let Some((entity, homing, transform, collider)) = player.map(|p| p.into_inner()) else {
+        return;
+    };
+
+    if prev_state.is_none_or(|s| s != homing.state) {
+        *prev_state = Some(homing.state);
+
+        match homing.state {
+            HomingState::Hooking => {
+                // let Ok(target) = target.get(homing.target()) else {
+                //     return;
+                // };
+                //
+                // let mut t = Transform::from_translation(
+                //     transform.translation() + Vec3::new(TILE_SIZE, -TILE_SIZE, 0.),
+                // );
+                //
+                // t.rotate_around(
+                //     collider.global_absolute(transform).center().extend(0.),
+                //     Quat::from_rotation_z(
+                //         -(target.translation() - transform.translation())
+                //             .xy()
+                //             .angle_to(Vec2::Y)
+                //             + f32::consts::PI,
+                //     ),
+                // );
+                //
+                // commands.spawn((
+                //     t,
+                //     OneShot::Despawn,
+                //     ParticleSpawner::default(),
+                //     ParticleEffectHandle(server.load("particles/homing_start.ron")),
+                // ));
+            }
+            HomingState::Moving => {}
+            HomingState::Exploding => {
+                // let Ok(target) = target.get(homing.target()) else {
+                //     return;
+                // };
+                //
+                // commands.spawn((
+                //     Transform::from_translation(target.translation()).with_rotation(
+                //         Quat::from_rotation_z(
+                //             (target.translation() - transform.translation())
+                //                 .xy()
+                //                 .angle_to(Vec2::Y),
+                //             // + f32::consts::PI,
+                //         ),
+                //     ),
+                //     ParticleSpawner::default(),
+                //     ParticleEffectHandle(server.load("particles/homing_hooking.ron")),
+                //     LifeTime::secs(0.5),
+                // ));
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Component)]
 pub struct BrushingMove(Stopwatch);
 
@@ -225,18 +297,28 @@ fn start_jump(
     mut commands: Commands,
     player: Option<
         Single<
-            (Entity, &ActionState<Action>),
+            (Entity, &ActionState<Action>, &GlobalTransform),
             Or<(With<Grounded>, With<BrushingLeft>, With<BrushingRight>)>,
         >,
     >,
+    server: Res<AssetServer>,
 ) {
-    let Some((entity, action_state)) = player.map(|p| p.into_inner()) else {
+    let Some((entity, action_state, transform)) = player.map(|p| p.into_inner()) else {
         return;
     };
 
     for action in action_state.get_just_pressed() {
         if action == Action::Jump {
             commands.entity(entity).insert(Jumping);
+
+            commands.spawn((
+                Transform::from_translation(
+                    transform.translation() + Vec3::new(TILE_SIZE, -TILE_SIZE * 1.75, 0.),
+                ),
+                OneShot::Despawn,
+                ParticleSpawner::default(),
+                ParticleEffectHandle(server.load("particles/jump.ron")),
+            ));
         }
     }
 }

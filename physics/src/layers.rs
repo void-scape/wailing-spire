@@ -60,7 +60,6 @@ impl RegisterPhysicsLayer for App {
                 super::collision::handle_dynamic_body_collsions::<T>,
             )
                 .chain()
-                .in_set(super::PhysicsSystems::Collision)
                 .in_set(super::CollisionSystems::Resolution),
         )
     }
@@ -70,7 +69,6 @@ impl RegisterPhysicsLayer for App {
             super::Physics,
             super::collision::update_grounded::<T>
                 .chain()
-                .in_set(super::PhysicsSystems::Collision)
                 .in_set(super::CollisionSystems::Grounding),
         )
     }
@@ -80,7 +78,6 @@ impl RegisterPhysicsLayer for App {
             super::Physics,
             super::collision::update_brushing::<T>
                 .chain()
-                .in_set(super::PhysicsSystems::Collision)
                 .in_set(super::CollisionSystems::Brushing),
         )
     }

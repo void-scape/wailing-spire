@@ -15,6 +15,7 @@ bevy_framepace = "0.18"
 physics = { path = "physics" }
 selector = { path = "selector" }
 bevy-inspector-egui = "0.28.1"
+bevy_enoki = "0.3.3"
 
 [dependencies.bevy]
 version = "0.15"

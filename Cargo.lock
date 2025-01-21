@@ -748,6 +748,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_enoki"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cb9e8602abb486a4265c227f00c9627d58c465568425511e545e2d69fb3ae52"
+dependencies = [
+ "bevy",
+ "rand",
+ "ron",
+ "serde",
+]
+
+[[package]]
 name = "bevy_framepace"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1102,6 +1114,7 @@ name = "bevy_pixel_gfx"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_tween",
  "rand",
 ]
 
@@ -5077,6 +5090,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_enoki",
  "bevy_framepace",
  "bevy_ldtk_scene",
  "bevy_pixel_gfx",

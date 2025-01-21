@@ -138,40 +138,44 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(PreUpdate, input::update_active_input_type)
             .add_systems(
+                Physics,
+                (
+                    (direction, hook::collision_hook).before(PlayerSystems::Movement),
+                    flip_sprite.after(PlayerSystems::Movement),
+                ),
+            )
+            .configure_sets(
+                Physics,
+                PlayerSystems::Movement.before(PhysicsSystems::Velocity),
+            )
+            .add_systems(
                 Update,
                 (
+                    health::no_shield_collision,
                     (
-                        direction.before(PlayerSystems::Movement),
-                        flip_sprite.after(PlayerSystems::Movement),
+                        hook::gather_viable_targets,
+                        hook::move_hook,
+                        selector::clear_removed_entities,
+                        ::selector::calculate_selectors,
+                        selector::trigger_hook,
+                        combo::combo,
+                        camera::update_current_level,
+                        health::death,
+                        hook::show_hook,
                     ),
-                    (
-                        health::no_shield_collision,
-                        hook::collision_hook,
-                        (
-                            hook::gather_viable_targets,
-                            hook::move_hook,
-                            selector::clear_removed_entities,
-                            ::selector::calculate_selectors,
-                            selector::trigger_hook,
-                            combo::combo,
-                            camera::update_current_level,
-                            health::death,
-                            hook::show_hook,
-                        ),
-                    )
-                        .chain(),
-                ),
+                )
+                    .chain(),
             )
             .add_systems(PostUpdate, selector::add_selectors)
             .add_systems(
                 Physics,
                 (
                     camera::move_camera.before(PhysicsSystems::Velocity),
-                    ((
+                    (
                         selector::manage_offscreen_selectors,
                         selector::move_offscreen_indicators,
                     )
-                        .chain(),)
+                        .chain()
                         .after(PhysicsSystems::Collision),
                 ),
             );
