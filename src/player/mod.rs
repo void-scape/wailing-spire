@@ -123,6 +123,7 @@ impl Plugin for PlayerPlugin {
             .init_resource::<hook::ViableTargets>()
             .init_resource::<::selector::SelectorTick>()
             .insert_resource(::selector::MaxSelectors(4))
+            .init_resource::<camera::CameraConstraints>()
             .insert_resource(hook::ShowHook::default())
             .insert_resource(input::ActiveInputType::default())
             .insert_resource(PlayerSettings::default())

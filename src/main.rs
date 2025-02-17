@@ -29,6 +29,7 @@ mod spikes;
 #[allow(unused)]
 mod spire;
 mod tween;
+mod ui;
 
 const WIDTH: f32 = 440.;
 const HEIGHT: f32 = 248.;
@@ -52,6 +53,7 @@ fn main() {
             bevy_enoki::EnokiPlugin,
             lifetime::LifeTimePlugin,
             health::HealthPlugin,
+            ui::UiPlugin,
         ))
         .register_required_components::<spire::TileSolid, physics::collision::TilesetCollider>()
         .add_systems(Update, tween::despawn_finished_tweens)
@@ -85,7 +87,10 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn long() -> LevelLoader {
-    LevelLoader::levels(Stack((Start, Up, Up, Up, Up, Up, Up, Up, Top)))
+    LevelLoader::levels(Stack((
+        // StartLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, UpLevel, TopLevel,
+        StartA, MiddleA, EndA,
+    )))
 }
 
 fn startup(mut commands: Commands, server: Res<AssetServer>) {

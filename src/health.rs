@@ -70,6 +70,12 @@ impl Health {
     pub fn dead(&self) -> bool {
         self.dead || self.current == 0
     }
+
+    /// Calculate the current proportion of health
+    /// relative to full.
+    pub fn proportion(&self) -> f32 {
+        self.current as f32 / self.max as f32
+    }
 }
 
 /// Entity's [`Health`] has reached 0.
