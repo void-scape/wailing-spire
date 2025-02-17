@@ -1,4 +1,3 @@
-use crate::StartLevel;
 use crate::{spire::*, LEVEL_SIZE, TILE_SIZE};
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashMap;
@@ -149,29 +148,29 @@ impl<const C: usize, const R: usize> LevelSet for Map<C, R> {
     ) -> Vec<(LevelUid, bevy::prelude::Vec3)> {
         let mut output = Vec::with_capacity(R * C);
 
-        registry.register(L1Level::uid(), L1Level::meta());
-        registry.register(L2Level::uid(), L2Level::meta());
-        registry.register(L3Level::uid(), L3Level::meta());
-        registry.register(L4Level::uid(), L4Level::meta());
-        registry.register(L5Level::uid(), L5Level::meta());
-        registry.register(L6Level::uid(), L6Level::meta());
-        registry.register(L7Level::uid(), L7Level::meta());
-        registry.register(L8Level::uid(), L8Level::meta());
-        registry.register(L9Level::uid(), L9Level::meta());
-        registry.register(L10Level::uid(), L10Level::meta());
-        registry.register(L11Level::uid(), L11Level::meta());
-        registry.register(L12Level::uid(), L12Level::meta());
-        registry.register(L13Level::uid(), L13Level::meta());
-        registry.register(L14Level::uid(), L14Level::meta());
-        registry.register(L15Level::uid(), L15Level::meta());
-        registry.register(L16Level::uid(), L16Level::meta());
+        registry.register(L1::uid(), L1::meta());
+        registry.register(L2::uid(), L2::meta());
+        registry.register(L3::uid(), L3::meta());
+        registry.register(L4::uid(), L4::meta());
+        registry.register(L5::uid(), L5::meta());
+        registry.register(L6::uid(), L6::meta());
+        registry.register(L7::uid(), L7::meta());
+        registry.register(L8::uid(), L8::meta());
+        registry.register(L9::uid(), L9::meta());
+        registry.register(L10::uid(), L10::meta());
+        registry.register(L11::uid(), L11::meta());
+        registry.register(L12::uid(), L12::meta());
+        registry.register(L13::uid(), L13::meta());
+        registry.register(L14::uid(), L14::meta());
+        registry.register(L15::uid(), L15::meta());
+        registry.register(L16::uid(), L16::meta());
 
         for y in 0..R {
             for x in 0..C {
                 output.push((
                     self.rooms[y][x]
                         .map(|room| room.faces.level())
-                        .unwrap_or(L16Level::uid()),
+                        .unwrap_or(L16::uid()),
                     (TILE_SIZE * LEVEL_SIZE * Vec2::new(x as f32, -(y as f32))).extend(0.),
                 ));
             }
@@ -274,22 +273,22 @@ impl RoomFaces {
 
     pub fn level(&self) -> LevelUid {
         match (self.up(), self.right(), self.down(), self.left()) {
-            (Face::Closed, Face::Open, Face::Open, Face::Closed) => L1Level::uid(),
-            (Face::Closed, Face::Open, Face::Open, Face::Open) => L2Level::uid(),
-            (Face::Closed, Face::Closed, Face::Open, Face::Open) => L3Level::uid(),
-            (Face::Open, Face::Open, Face::Open, Face::Closed) => L4Level::uid(),
-            (Face::Open, Face::Open, Face::Open, Face::Open) => L5Level::uid(),
-            (Face::Open, Face::Closed, Face::Open, Face::Open) => L6Level::uid(),
-            (Face::Open, Face::Open, Face::Closed, Face::Closed) => L7Level::uid(),
-            (Face::Open, Face::Open, Face::Closed, Face::Open) => L8Level::uid(),
-            (Face::Open, Face::Closed, Face::Closed, Face::Open) => L9Level::uid(),
-            (Face::Closed, Face::Open, Face::Closed, Face::Closed) => L10Level::uid(),
-            (Face::Closed, Face::Open, Face::Closed, Face::Open) => L11Level::uid(),
-            (Face::Closed, Face::Closed, Face::Closed, Face::Open) => L12Level::uid(),
-            (Face::Closed, Face::Closed, Face::Open, Face::Closed) => L13Level::uid(),
-            (Face::Open, Face::Closed, Face::Open, Face::Closed) => L14Level::uid(),
-            (Face::Open, Face::Closed, Face::Closed, Face::Closed) => L15Level::uid(),
-            (Face::Closed, Face::Closed, Face::Closed, Face::Closed) => L16Level::uid(),
+            (Face::Closed, Face::Open, Face::Open, Face::Closed) => L1::uid(),
+            (Face::Closed, Face::Open, Face::Open, Face::Open) => L2::uid(),
+            (Face::Closed, Face::Closed, Face::Open, Face::Open) => L3::uid(),
+            (Face::Open, Face::Open, Face::Open, Face::Closed) => L4::uid(),
+            (Face::Open, Face::Open, Face::Open, Face::Open) => L5::uid(),
+            (Face::Open, Face::Closed, Face::Open, Face::Open) => L6::uid(),
+            (Face::Open, Face::Open, Face::Closed, Face::Closed) => L7::uid(),
+            (Face::Open, Face::Open, Face::Closed, Face::Open) => L8::uid(),
+            (Face::Open, Face::Closed, Face::Closed, Face::Open) => L9::uid(),
+            (Face::Closed, Face::Open, Face::Closed, Face::Closed) => L10::uid(),
+            (Face::Closed, Face::Open, Face::Closed, Face::Open) => L11::uid(),
+            (Face::Closed, Face::Closed, Face::Closed, Face::Open) => L12::uid(),
+            (Face::Closed, Face::Closed, Face::Open, Face::Closed) => L13::uid(),
+            (Face::Open, Face::Closed, Face::Open, Face::Closed) => L14::uid(),
+            (Face::Open, Face::Closed, Face::Closed, Face::Closed) => L15::uid(),
+            (Face::Closed, Face::Closed, Face::Closed, Face::Closed) => L16::uid(),
         }
     }
 }
