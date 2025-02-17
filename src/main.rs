@@ -19,6 +19,7 @@ use spire::*;
 
 mod animation;
 mod enemies;
+mod levels;
 mod entities;
 mod health;
 mod lifetime;
