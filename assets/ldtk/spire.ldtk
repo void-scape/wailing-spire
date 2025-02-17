@@ -11,7 +11,7 @@
 	"iid": "a2533480-7820-11ed-b6fd-e9108160ae94",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 146,
+	"nextUid": 147,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -1150,7 +1150,7 @@
 			"uid": 144,
 			"type": "F_Enum(142)",
 			"isArray": false,
-			"canBeNull": false,
+			"canBeNull": true,
 			"arrayMinLength": null,
 			"arrayMaxLength": null,
 			"editorDisplayMode": "Hidden",
@@ -1187,7 +1187,7 @@
 			"uid": 145,
 			"type": "F_Enum(143)",
 			"isArray": false,
-			"canBeNull": false,
+			"canBeNull": true,
 			"arrayMinLength": null,
 			"arrayMaxLength": null,
 			"editorDisplayMode": "Hidden",
@@ -1947,6 +1947,22 @@
 							"fieldInstances": [],
 							"__worldX": 752,
 							"__worldY": 544
+						},
+						{
+							"__identifier": "Knight",
+							"__grid": [9,17],
+							"__pivot": [0,0],
+							"__tags": [ "atlas", "worldly" ],
+							"__tile": { "tilesetUid": 69, "x": 0, "y": 0, "w": 32, "h": 32 },
+							"__smartColor": "#BE4A2F",
+							"iid": "af5ea8a0-e920-11ef-923c-69d89f48b171",
+							"width": 32,
+							"height": 32,
+							"defUid": 70,
+							"px": [144,272],
+							"fieldInstances": [],
+							"__worldX": 752,
+							"__worldY": 608
 						}
 					]
 				},
@@ -2324,6 +2340,22 @@
 							"fieldInstances": [],
 							"__worldX": 768,
 							"__worldY": -256
+						},
+						{
+							"__identifier": "WallHook",
+							"__grid": [9,0],
+							"__pivot": [0,0],
+							"__tags": ["atlas"],
+							"__tile": { "tilesetUid": 127, "x": 0, "y": 0, "w": 32, "h": 32 },
+							"__smartColor": "#D77643",
+							"iid": "f5afc1e0-e920-11ef-923c-7b0bd1524eac",
+							"width": 32,
+							"height": 32,
+							"defUid": 126,
+							"px": [144,0],
+							"fieldInstances": [],
+							"__worldX": 752,
+							"__worldY": -336
 						}
 					]
 				},
