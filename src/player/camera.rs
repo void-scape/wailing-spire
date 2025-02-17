@@ -5,6 +5,14 @@ use bevy_ldtk_scene::extract::levels::LevelMeta;
 use bevy_ldtk_scene::levels::Level;
 use bevy_pixel_gfx::camera::MainCamera;
 
+#[derive(Resource, Default)]
+pub struct CameraConstraints {
+    pub top: Option<f32>,
+    pub bottom: Option<f32>,
+    pub left: Option<f32>,
+    pub right: Option<f32>,
+}
+
 #[derive(Component)]
 pub struct CurrentLevel(pub LevelMeta);
 
@@ -31,6 +39,7 @@ pub fn move_camera(
     player: Query<(&GlobalTransform, &CurrentLevel), (With<Player>, Without<MainCamera>)>,
     level_query: Query<(&GlobalTransform, &Level)>,
     settings: Res<PlayerSettings>,
+    constraints: Res<CameraConstraints>,
 ) {
     let Ok(mut cam) = cam.get_single_mut() else {
         return;
@@ -51,5 +60,29 @@ pub fn move_camera(
         let delta = target_position - cam.translation;
 
         cam.translation += delta * settings.camera_speed;
+
+        if let Some(left) = constraints.left {
+            if cam.translation.x < left {
+                cam.translation.x = left;
+            }
+        }
+
+        if let Some(right) = constraints.right {
+            if cam.translation.x > right {
+                cam.translation.x = right;
+            }
+        }
+
+        if let Some(top) = constraints.top {
+            if cam.translation.y > top {
+                cam.translation.y = top;
+            }
+        }
+
+        if let Some(bottom) = constraints.bottom {
+            if cam.translation.y < bottom {
+                cam.translation.y = bottom;
+            }
+        }
     }
 }
