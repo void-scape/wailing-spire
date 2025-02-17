@@ -8,7 +8,7 @@ use bevy::{
 use bevy_ldtk_scene::{levels::Stack, prelude::*, process::tiles::LevelTileSets};
 use bevy_pixel_gfx::pixel_perfect::CanvasDimensions;
 use health::Dead;
-use map::MapGen;
+//use map::MapGen;
 use physics::{
     gravity::Gravity,
     layers::{self},
@@ -89,8 +89,8 @@ fn long() -> LevelLoader {
 }
 
 fn startup(mut commands: Commands, server: Res<AssetServer>) {
-    let map = MapGen::<3, 5>::default().gen().trim_edge();
-    map::draw(&map);
+    //let map = MapGen::<3, 5>::default().gen().trim_edge();
+    //map::draw(&map);
 
     commands.spawn((
         HotWorld(server.load("ldtk/spire.ldtk")),

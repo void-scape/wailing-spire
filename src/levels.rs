@@ -1,6 +1,16 @@
-use crate::spire::QueryLevelFields;
-use bevy_ldtk_scene::prelude::LevelMetaExt;
+use crate::spire::LevelExt;
+use bevy::prelude::*;
 
-pub trait Level: LevelMetaExt + QueryLevelFields {}
+#[derive(Resource, Default)]
+pub struct LevelRegistry(Vec<Box<dyn LevelExt>>);
 
-impl<T> Level for T where T: LevelMetaExt + QueryLevelFields {}
+impl LevelRegistry {
+    pub fn push<T: LevelExt>(&mut self, level: T) {
+        self.0.push(Box::new(level));
+    }
+
+    pub fn levels(&self) -> &[Box<dyn LevelExt>] {
+        &self.0
+    }
+}
+

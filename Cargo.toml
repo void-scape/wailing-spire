@@ -23,6 +23,8 @@ features = ["dynamic_linking", "file_watcher", "wav"]
 
 [build-dependencies]
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
+proc-macro2 = "1.0.93"
+quote = "1.0.38"
 
 [profile.dev]
 opt-level = 0
